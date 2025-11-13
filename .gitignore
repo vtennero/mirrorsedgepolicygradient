@@ -5,6 +5,14 @@
 .utmp/
 /[Ll]ibrary/
 /[Tt]emp/
+# Also ignore Unity folders in subdirectories (e.g., v0.1/)
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
 /[Oo]bj/
 /[Bb]uild/
 /[Bb]uilds/
