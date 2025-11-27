@@ -5,23 +5,26 @@ using UnityEngine.InputSystem;
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement Settings")]
-    public float moveSpeed = 6f;
-    public float sprintSpeed = 12f; // 2x normal speed
-    public float sprintAccelTime = 3f; // Time to reach max sprint speed
+    [Tooltip("Override config values if needed, otherwise uses CharacterConfig")]
+    public float moveSpeed = -1f; // -1 means use config
+    public float sprintSpeed = -1f; // -1 means use config
+    public float sprintAccelTime = -1f; // -1 means use config
     private float currentSprintTime = 0f;
     private bool isMoving = false;
-    public float jumpForce = 8f;
-    public float gravity = -20f;
+    public float jumpForce = -1f; // -1 means use config
+    public float jumpForwardBoost = -1f; // -1 means use config
+    public float gravity = -1f; // -1 means use config
     
     [Header("Ground Detection")]
-    public float groundCheckDistance = 0.1f;
+    public float groundCheckDistance = -1f; // -1 means use config
     public LayerMask groundMask = 1;
     
     // Components
     private CharacterController characterController;
     
     // Movement variables
-    private Vector3 velocity;
+    private Vector3 velocity; // Vertical velocity (gravity/jumping)
+    private Vector3 jumpMomentum; // Horizontal momentum from jump
     private bool isGrounded;
     private Vector2 moveInput;
     private bool jumpPressed;
@@ -29,9 +32,8 @@ public class PlayerController : MonoBehaviour
     
     // Mouse look variables
     private float mouseX = 0f;
-    private float mouseY = 0f;
-    private float mouseSensitivity = 2f;
-    public float verticalLookLimit = 80f; // Limit how far up/down you can look
+    private float mouseSensitivity = -1f; // -1 means use config
+    public float verticalLookLimit = -1f; // -1 means use config
     
     // Animation (if available)
     private Animator animator;
@@ -57,10 +59,39 @@ public class PlayerController : MonoBehaviour
         
         // Lock cursor for mouse look
         Cursor.lockState = CursorLockMode.Locked;
+        
+        // Initialize values from config if not overridden
+        InitializeFromConfig();
+    }
+    
+    void InitializeFromConfig()
+    {
+        CharacterConfig config = CharacterConfigManager.Config;
+        
+        if (moveSpeed < 0) moveSpeed = config.moveSpeed;
+        if (sprintSpeed < 0) sprintSpeed = config.sprintSpeed;
+        if (sprintAccelTime < 0) sprintAccelTime = config.sprintAccelTime;
+        if (jumpForce < 0) jumpForce = config.jumpForce;
+        if (jumpForwardBoost < 0) jumpForwardBoost = config.jumpForwardBoost;
+        if (gravity < 0) gravity = config.gravity;
+        if (groundCheckDistance < 0) groundCheckDistance = config.groundCheckDistance;
+        if (mouseSensitivity < 0) mouseSensitivity = config.mouseSensitivity;
+        if (verticalLookLimit < 0) verticalLookLimit = config.playerVerticalLookLimit;
     }
     
     void Update()
     {
+        // Only process input and movement if in Player control mode
+        // If ControlModeManager doesn't exist, default to Player mode (backward compatibility)
+        if (ControlModeManager.Instance != null)
+        {
+            if (ControlModeManager.Instance.CurrentMode != ControlModeManager.ControlMode.Player)
+            {
+                return; // Skip all processing if not in player mode
+            }
+        }
+        // If no ControlModeManager exists, continue with player control (default behavior)
+        
         HandleInput();
         HandleGroundDetection();
         HandleMovement();
@@ -74,6 +105,8 @@ public class PlayerController : MonoBehaviour
         Keyboard keyboard = Keyboard.current;
         Mouse mouse = Mouse.current;
         if (keyboard == null) return;
+        
+        CharacterConfig config = CharacterConfigManager.Config;
         
         // WASD movement
         moveInput.x = 0;
@@ -90,13 +123,14 @@ public class PlayerController : MonoBehaviour
         if (keyboard.upArrowKey.isPressed) moveInput.y = 1;
         if (keyboard.downArrowKey.isPressed) moveInput.y = -1;
         
-        // Mouse look
+        // Mouse look - for third-person, only horizontal rotation affects player
+        // Vertical rotation is handled by camera
         if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
         {
             Vector2 mouseDelta = mouse.delta.ReadValue();
-            mouseX += mouseDelta.x * mouseSensitivity * 0.1f;
-            mouseY -= mouseDelta.y * mouseSensitivity * 0.1f; // Inverted Y for natural feel
-            mouseY = Mathf.Clamp(mouseY, -verticalLookLimit, verticalLookLimit);
+            mouseX += mouseDelta.x * mouseSensitivity * config.mouseInputMultiplier; // Horizontal rotation (player turns)
+            // mouseY is no longer used for player rotation in third-person mode
+            // Camera handles vertical rotation
         }
         
         // Jump
@@ -109,7 +143,7 @@ public class PlayerController : MonoBehaviour
         sprintPressed = keyboard.leftShiftKey.isPressed;
         
         // Check if player is moving
-        isMoving = moveInput.magnitude > 0.1f;
+        isMoving = moveInput.magnitude > config.movementThreshold;
         
         if (sprintPressed && isMoving)
         {
@@ -117,7 +151,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            currentSprintTime = Mathf.Max(currentSprintTime - Time.deltaTime * 2f, 0f); // Decelerate faster
+            currentSprintTime = Mathf.Max(currentSprintTime - Time.deltaTime * config.sprintDecelerationRate, 0f); // Decelerate faster
         }
         
         // Toggle cursor lock with Escape
@@ -138,14 +172,29 @@ public class PlayerController : MonoBehaviour
         // Reset velocity when grounded
         if (isGrounded && velocity.y < 0)
         {
-            velocity.y = -2f; // Small negative value to keep grounded
+            CharacterConfig config = CharacterConfigManager.Config;
+            velocity.y = config.groundedVelocityReset; // Small negative value to keep grounded
+            jumpMomentum = Vector3.zero; // Reset jump momentum when grounded
         }
     }
     
     void HandleMovement()
     {
-        // Apply mouse rotation to player
-        transform.rotation = Quaternion.Euler(mouseY, mouseX, 0); // Apply both vertical and horizontal rotation
+        CharacterConfig config = CharacterConfigManager.Config;
+        
+        // For third-person: Sync player rotation with camera's horizontal rotation
+        // This gives proper third-person feel where player faces camera direction
+        CameraFollow cameraFollow = Camera.main?.GetComponent<CameraFollow>();
+        if (cameraFollow != null)
+        {
+            // Sync player rotation with camera's horizontal rotation
+            transform.rotation = Quaternion.Euler(0, cameraFollow.HorizontalRotation, 0);
+        }
+        else
+        {
+            // Fallback: rotate player with mouse X if no camera follow script
+            transform.rotation = Quaternion.Euler(0, mouseX, 0);
+        }
         
         // Calculate movement direction relative to player's facing direction
         Vector3 forward = transform.forward;
@@ -160,12 +209,18 @@ public class PlayerController : MonoBehaviour
         
         float currentSpeed = (sprintPressed && isMoving) ? currentSprintSpeed : moveSpeed;
         
-        // Apply movement
-        characterController.Move(moveDirection * currentSpeed * Time.deltaTime);
+        // Apply movement (normal movement + jump momentum for longer jumps)
+        Vector3 totalMovement = (moveDirection * currentSpeed) + jumpMomentum;
+        characterController.Move(totalMovement * Time.deltaTime);
+        
+        // Decay jump momentum over time (air resistance)
+        jumpMomentum = Vector3.Lerp(jumpMomentum, Vector3.zero, Time.deltaTime * config.jumpMomentumDecayRate);
     }
     
     void HandleJumping()
     {
+        CharacterConfig config = CharacterConfigManager.Config;
+        
         // Apply gravity
         velocity.y += gravity * Time.deltaTime;
         
@@ -173,6 +228,20 @@ public class PlayerController : MonoBehaviour
         if (jumpPressed && isGrounded)
         {
             velocity.y = jumpForce;
+            
+            // Add forward momentum when jumping (for longer jumps)
+            if (moveInput.magnitude > config.movementThreshold)
+            {
+                Vector3 forward = transform.forward;
+                Vector3 right = transform.right;
+                Vector3 jumpDirection = (forward * moveInput.y + right * moveInput.x).normalized;
+                // Add horizontal boost for longer jumps
+                jumpMomentum = jumpDirection * jumpForwardBoost;
+            }
+            else
+            {
+                jumpMomentum = Vector3.zero;
+            }
         }
         
         // Always reset jump input at end of frame
@@ -186,6 +255,8 @@ public class PlayerController : MonoBehaviour
     {
         if (animator == null) return;
         
+        CharacterConfig config = CharacterConfigManager.Config;
+        
         // Calculate speed for animation blending
         float speed = moveInput.magnitude;
         
@@ -198,7 +269,7 @@ public class PlayerController : MonoBehaviour
             // Set jogging and sprinting based on movement
             animator.SetBool("IsJogging", isMoving);
             // Use sprint animation when sprinting progress is significant
-            bool isActuallySprinting = sprintPressed && isMoving && (currentSprintTime > 0.5f);
+            bool isActuallySprinting = sprintPressed && isMoving && (currentSprintTime > config.sprintAnimationThreshold);
             animator.SetBool("IsSprinting", isActuallySprinting);
         }
         else
@@ -216,20 +287,20 @@ public class PlayerController : MonoBehaviour
         // Speed up sprint animation to match movement speed
         if (currentJumpState == JumpState.Grounded)
         {
-            float animationSpeed = 1f;
-            if (sprintPressed && isMoving && currentSprintTime > 0.5f)
+            float animationSpeed = config.baseAnimationSpeed;
+            if (sprintPressed && isMoving && currentSprintTime > config.sprintAnimationThreshold)
             {
                 // Calculate animation speed based on actual movement speed (capped for smoothness)
                 float sprintProgress = currentSprintTime / sprintAccelTime;
                 float sprintCurve = sprintProgress * sprintProgress;
                 float currentSprintSpeed = Mathf.Lerp(moveSpeed, sprintSpeed, sprintCurve);
-                animationSpeed = Mathf.Lerp(1f, 1.5f, (currentSprintSpeed - moveSpeed) / (sprintSpeed - moveSpeed)); // Max 1.5x speed
+                animationSpeed = Mathf.Lerp(config.baseAnimationSpeed, config.maxSprintAnimationSpeed, (currentSprintSpeed - moveSpeed) / (sprintSpeed - moveSpeed));
             }
             animator.speed = animationSpeed;
         }
         else
         {
-            animator.speed = 1f; // Normal speed for jump animations
+            animator.speed = config.baseAnimationSpeed; // Normal speed for jump animations
         }
         
         // Update previous frame state

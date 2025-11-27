@@ -78,99 +78,126 @@ public class SetupDemo : MonoBehaviour
         // Generate city skyline around the parkour area
         GenerateCitySkyline();
         
-        // Use the assigned prefab or try to load GLB
-        GameObject faithModel = faithPrefab;
-        
-        if (faithModel == null)
+        // Check if player already exists in scene (don't create duplicate)
+        if (FindObjectOfType<PlayerController>() != null)
         {
-#if UNITY_EDITOR
-            // Try to load GLB directly using AssetDatabase
-            string glbPath = "Assets/Characters/faith/glb/idle.glb";
-            faithModel = AssetDatabase.LoadAssetAtPath<GameObject>(glbPath);
-            
-            if (faithModel != null)
+            Debug.Log("SetupDemo: Player already exists in scene, skipping player creation");
+            // Still setup camera if needed
+            Camera cam = Camera.main;
+            if (cam != null && cam.GetComponent<CameraFollow>() == null)
             {
-                Debug.Log($"Auto-found Faith GLB at: {glbPath}");
+                PlayerController existingPlayer = FindObjectOfType<PlayerController>();
+                CameraFollow follow = cam.gameObject.AddComponent<CameraFollow>();
+                follow.player = existingPlayer.transform;
             }
-            else
-            {
-                Debug.LogWarning($"Faith GLB not found. Drag idle.glb to SetupDemo's 'Faith Prefab' field in Inspector");
-            }
-#else
-            Debug.LogWarning("Drag idle.glb to SetupDemo's 'Faith Prefab' field in Inspector");
-#endif
-        }
-        
-        // Create player
-        GameObject player;
-        if (faithModel != null)
-        {
-            player = Instantiate(faithModel);
-            player.name = "Player";
         }
         else
         {
-            // Fallback to capsule if GLB not found
-            player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            player.name = "Player (Fallback)";
-            DestroyImmediate(player.GetComponent<CapsuleCollider>());
-            player.GetComponent<Renderer>().material.color = Color.blue;
-        }
-        
-        player.transform.position = new Vector3(0, 2.5f, 0); // Spawn above first platform
-        player.transform.rotation = Quaternion.Euler(0, 90, 0); // Face along the platform line
-        player.transform.localScale = Vector3.one * 1.5f; // Make Faith 1.5x bigger (reasonable size)
-        
-        // Add components
-        CharacterController cc = player.GetComponent<CharacterController>();
-        if (cc == null) cc = player.AddComponent<CharacterController>();
-        
-        // CharacterController size adjusted for scaled character
-        cc.height = 1.8f; // Keep normal human proportions
-        cc.radius = 0.4f; // Slightly wider for scaled model
-        cc.center = new Vector3(0, 0.9f, 0);
-        
-        player.AddComponent<PlayerController>();
-        
-        // Add animator and assign controller
-        Animator animator = player.GetComponent<Animator>();
-        if (animator == null) animator = player.AddComponent<Animator>();
-        
-#if UNITY_EDITOR
-        // Try to find and assign the animator controller
-        string[] possiblePaths = {
-            "Assets/FaithAnimatorController.controller",
-            "Assets/FaithAnimationController.controller",
-            "Assets/MaggieAnimatorController.controller",
-            "Assets/MaggieAnimationController.controller"
-        };
-        
-        foreach (string path in possiblePaths)
-        {
-            UnityEditor.Animations.AnimatorController controller = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(path);
-            if (controller != null)
+            // Use the assigned prefab or try to load GLB
+            GameObject faithModel = faithPrefab;
+            
+            if (faithModel == null)
             {
-                animator.runtimeAnimatorController = controller;
-                Debug.Log($"Auto-assigned animator controller: {path}");
-                break;
-            }
-        }
-        
-        if (animator.runtimeAnimatorController == null)
-        {
-            Debug.LogWarning("No animator controller found. You'll need to assign it manually in Inspector.");
-        }
+#if UNITY_EDITOR
+                // Try to load GLB directly using AssetDatabase
+                string glbPath = "Assets/Characters/faith/glb/idle.glb";
+                faithModel = AssetDatabase.LoadAssetAtPath<GameObject>(glbPath);
+                
+                if (faithModel != null)
+                {
+                    Debug.Log($"Auto-found Faith GLB at: {glbPath}");
+                }
+                else
+                {
+                    Debug.LogWarning($"Faith GLB not found. Drag idle.glb to SetupDemo's 'Faith Prefab' field in Inspector");
+                }
+#else
+                Debug.LogWarning("Drag idle.glb to SetupDemo's 'Faith Prefab' field in Inspector");
 #endif
-        
-        // Setup camera
-        Camera cam = Camera.main;
-        if (cam != null)
-        {
-            CameraFollow follow = cam.gameObject.AddComponent<CameraFollow>();
-            follow.player = player.transform;
+            }
+            
+            // Create player
+            GameObject player;
+            if (faithModel != null)
+            {
+                player = Instantiate(faithModel);
+                player.name = "Player";
+            }
+            else
+            {
+                // Fallback to capsule if GLB not found
+                player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                player.name = "Player (Fallback)";
+                DestroyImmediate(player.GetComponent<CapsuleCollider>());
+                player.GetComponent<Renderer>().material.color = Color.blue;
+            }
+            
+            player.transform.position = new Vector3(0, 2.5f, 0); // Spawn above first platform
+            player.transform.rotation = Quaternion.Euler(0, 90, 0); // Face along the platform line
+            player.transform.localScale = Vector3.one * 1.5f; // Make Faith 1.5x bigger (reasonable size)
+            
+            // Add components
+            CharacterController cc = player.GetComponent<CharacterController>();
+            if (cc == null) cc = player.AddComponent<CharacterController>();
+            
+            // CharacterController size adjusted for scaled character
+            cc.height = 1.8f; // Keep normal human proportions
+            cc.radius = 0.4f; // Slightly wider for scaled model
+            cc.center = new Vector3(0, 0.9f, 0);
+            
+            // Check if PlayerController already exists (don't duplicate)
+            if (player.GetComponent<PlayerController>() == null)
+            {
+                player.AddComponent<PlayerController>();
+            }
+            
+            // Add ParkourAgent if it doesn't exist
+            if (player.GetComponent<ParkourAgent>() == null)
+            {
+                player.AddComponent<ParkourAgent>();
+                Debug.Log("SetupDemo: Added ParkourAgent component to player");
+            }
+            
+            // Add animator and assign controller
+            Animator animator = player.GetComponent<Animator>();
+            if (animator == null) animator = player.AddComponent<Animator>();
+            
+#if UNITY_EDITOR
+            // Try to find and assign the animator controller
+            string[] possiblePaths = {
+                "Assets/FaithAnimatorController.controller",
+                "Assets/FaithAnimationController.controller",
+                "Assets/MaggieAnimatorController.controller",
+                "Assets/MaggieAnimationController.controller"
+            };
+            
+            foreach (string path in possiblePaths)
+            {
+                UnityEditor.Animations.AnimatorController controller = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(path);
+                if (controller != null)
+                {
+                    animator.runtimeAnimatorController = controller;
+                    Debug.Log($"Auto-assigned animator controller: {path}");
+                    break;
+                }
+            }
+            
+            if (animator.runtimeAnimatorController == null)
+            {
+                Debug.LogWarning("No animator controller found. You'll need to assign it manually in Inspector.");
+            }
+#endif
+            
+            // Setup camera
+            Camera cam = Camera.main;
+            if (cam != null)
+            {
+                CameraFollow follow = cam.gameObject.AddComponent<CameraFollow>();
+                follow.player = player.transform;
+            }
+            
+            Debug.Log("Demo ready! Use WASD + Space");
         }
-        
-        Debug.Log("Demo ready! Use WASD + Space");
     }
     
     void ApplyMirrorEdgeMaterial(GameObject platform, Color[] colors, float[] weights)
