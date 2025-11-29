@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML-Agents Training Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        
+        .run-card {
+            border: none;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.2s;
+        }
+        
+        .run-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        
+        .run-card-header {
+            cursor: pointer;
+            padding: 1.25rem;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            background: white;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .run-card-header:hover {
+            background: #f8f9fa;
+        }
+        
+        .run-card-body {
+            padding: 1.25rem;
+            background: white;
+        }
+        
+        .metric-badge {
+            display: inline-block;
+            padding: 0.35em 0.65em;
+            font-size: 0.85em;
+            font-weight: 600;
+            border-radius: 6px;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .mode-badge {
+            font-size: 0.75em;
+            padding: 0.25em 0.6em;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .mode-training {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .mode-inference {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .details-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .metric-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #212529;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        .expand-icon {
+            transition: transform 0.3s;
+        }
+        
+        .expand-icon.rotated {
+            transform: rotate(180deg);
+        }
+        
+        .key-metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .key-metric-item {
+            text-align: center;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        [title] {
+            cursor: help;
+        }
+        
+        .tooltip-text {
+            border-bottom: 1px dotted #6c757d;
+        }
+        
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            text-align: left;
+        }
+        
+        .comparison-table {
+            font-size: 0.9rem;
+        }
+        
+        .comparison-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .filter-buttons {
+            margin-bottom: 1.5rem;
+        }
+        
+        .filter-btn {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-graph-up"></i> ML-Agents Training Dashboard
+            </span>
+            <span class="text-white">
+                <button class="btn btn-light btn-sm" onclick="loadData()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <!-- Summary Stats -->
+        <div class="row mb-4" id="summaryStats">
+            <div class="col-md-3">
+                <div class="card stat-card" title="Total number of training and inference runs">
+                    <div class="card-body">
+                        <div class="metric-label">Total Runs</div>
+                        <div class="metric-value" id="totalRuns">-</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card" title="Highest average reward achieved across all runs - your best performing model">
+                    <div class="card-body">
+                        <div class="metric-label">Best Reward</div>
+                        <div class="metric-value" id="bestReward">-</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card" title="Most recent training or inference run">
+                    <div class="card-body">
+                        <div class="metric-label">Latest Run</div>
+                        <div class="metric-value" id="latestRun" style="font-size: 1rem;">-</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card" title="Total steps across all training and inference runs combined">
+                    <div class="card-body">
+                        <div class="metric-label">Total Training Steps</div>
+                        <div class="metric-value" id="totalSteps">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="runs-tab" data-bs-toggle="tab" data-bs-target="#runs" type="button">
+                    <i class="bi bi-list-ul"></i> All Runs
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="comparison-tab" data-bs-toggle="tab" data-bs-target="#comparison" type="button">
+                    <i class="bi bi-bar-chart"></i> Comparison
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabContent">
+            <!-- Runs Tab -->
+            <div class="tab-pane fade show active" id="runs" role="tabpanel">
+                <!-- Filters -->
+                <div class="filter-buttons">
+                    <button class="btn btn-sm btn-outline-primary filter-btn" onclick="filterRuns('all')">All</button>
+                    <button class="btn btn-sm btn-outline-primary filter-btn" onclick="filterRuns('training')">Training</button>
+                    <button class="btn btn-sm btn-outline-primary filter-btn" onclick="filterRuns('inference')">Inference</button>
+                    <div class="d-inline-block ms-3">
+                        <label class="me-2">Sort by:</label>
+                        <select class="form-select form-select-sm d-inline-block w-auto" id="sortSelect" onchange="sortRuns()">
+                            <option value="date-desc">Date (Newest)</option>
+                            <option value="date-asc">Date (Oldest)</option>
+                            <option value="reward-desc">Reward (Highest)</option>
+                            <option value="reward-asc">Reward (Lowest)</option>
+                            <option value="steps-desc">Steps (Most)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="runsContainer" class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Tab -->
+            <div class="tab-pane fade" id="comparison" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="chart-container">
+                            <h5 title="Average reward per episode across runs">Cumulative Reward Comparison</h5>
+                            <canvas id="rewardChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="chart-container">
+                            <h5 title="Average episode length across runs">Episode Length Comparison</h5>
+                            <canvas id="episodeLengthChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="chart-container" style="background: #fff3cd;">
+                            <h5 title="Policy Loss - should trend down over time. Lower is better (but not too close to zero)">🔴 Policy Loss (CRITICAL)</h5>
+                            <canvas id="policyLossChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="chart-container" style="background: #fff3cd;">
+                            <h5 title="Value Loss - measures value function accuracy. Should decrease and stabilize">🔴 Value Loss (CRITICAL)</h5>
+                            <canvas id="valueLossChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="chart-container">
+                            <h5 title="Total training steps across runs">Total Steps Comparison</h5>
+                            <canvas id="stepsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="chart-container">
+                            <h5 title="How long each run took">Training Duration Comparison</h5>
+                            <canvas id="durationChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Table -->
+                <div class="chart-container">
+                    <h5>Detailed Comparison</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped comparison-table" id="comparisonTable">
+                            <thead>
+                                <tr>
+                                    <th title="Name of the training run">Run ID</th>
+                                    <th title="When the run started">Date</th>
+                                    <th title="Training (learning) or Inference (testing)">Mode</th>
+                                    <th title="Average total reward per episode - main performance indicator">Avg Reward</th>
+                                    <th title="Best average reward achieved during this run">Max Reward</th>
+                                    <th title="Average steps per episode">Episode Length</th>
+                                    <th title="Shows if policy is learning. Should decrease over time." style="background: #fff3cd;">Policy Loss 🔴</th>
+                                    <th title="Measures value function accuracy. Should be low and stable." style="background: #fff3cd;">Value Loss 🔴</th>
+                                    <th title="Total training/inference steps completed">Total Steps</th>
+                                    <th title="How long the run took from start to finish">Duration (min)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparisonTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allRuns = [];
+        let currentFilter = 'all';
+        let charts = {};
+
+        async function loadData() {
+            try {
+                const response = await fetch('/api/runs');
+                allRuns = await response.json();
+                
+                updateSummaryStats();
+                displayRuns();
+                await loadComparisonData();
+                return true;
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('runsContainer').innerHTML = 
+                    '<div class="alert alert-danger">Error loading runs data</div>';
+                return false;
+            }
+        }
+
+        function updateSummaryStats() {
+            document.getElementById('totalRuns').textContent = allRuns.length;
+            
+            const rewards = allRuns
+                .map(r => r.key_metrics?.cumulative_reward_max || 0)
+                .filter(r => r > 0);
+            document.getElementById('bestReward').textContent = 
+                rewards.length > 0 ? Math.max(...rewards).toFixed(4) : 'N/A';
+            
+            if (allRuns.length > 0) {
+                const latest = allRuns[0];
+                document.getElementById('latestRun').textContent = 
+                    `${latest.run_id} (${latest.timestamps?.start || 'N/A'})`;
+            }
+            
+            const totalSteps = allRuns.reduce((sum, r) => 
+                sum + (r.key_metrics?.total_steps || 0), 0);
+            document.getElementById('totalSteps').textContent = 
+                totalSteps.toLocaleString();
+        }
+
+        function displayRuns() {
+            let runs = [...allRuns];
+            
+            // Apply filter
+            if (currentFilter !== 'all') {
+                runs = runs.filter(r => r.mode === currentFilter);
+            }
+            
+            // Apply sort
+            const sortBy = document.getElementById('sortSelect')?.value || 'date-desc';
+            runs = sortRunsArray(runs, sortBy);
+            
+            const container = document.getElementById('runsContainer');
+            
+            if (runs.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">No runs found</div>';
+                return;
+            }
+            
+            container.innerHTML = runs.map(run => createRunCard(run)).join('');
+        }
+
+        function sortRunsArray(runs, sortBy) {
+            const sorted = [...runs];
+            switch(sortBy) {
+                case 'date-asc':
+                    return sorted.reverse();
+                case 'reward-desc':
+                    return sorted.sort((a, b) => 
+                        (b.key_metrics?.cumulative_reward_mean || 0) - 
+                        (a.key_metrics?.cumulative_reward_mean || 0));
+                case 'reward-asc':
+                    return sorted.sort((a, b) => 
+                        (a.key_metrics?.cumulative_reward_mean || 0) - 
+                        (b.key_metrics?.cumulative_reward_mean || 0));
+                case 'steps-desc':
+                    return sorted.sort((a, b) => 
+                        (b.key_metrics?.total_steps || 0) - 
+                        (a.key_metrics?.total_steps || 0));
+                default: // date-desc
+                    return sorted;
+            }
+        }
+
+        function createRunCard(run) {
+            const km = run.key_metrics || {};
+            const config = run.config || {};
+            const timestamps = run.timestamps || {};
+            
+            const modeBadge = run.mode === 'training' ? 
+                '<span class="mode-badge mode-training">Training</span>' :
+                '<span class="mode-badge mode-inference">Inference</span>';
+            
+            return `
+                <div class="card run-card">
+                    <div class="run-card-header" onclick="toggleDetails('${run.run_id}')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1">
+                                    <i class="bi bi-folder"></i> ${run.run_id}
+                                    ${modeBadge}
+                                </h5>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar"></i> ${timestamps.start || 'N/A'} 
+                                    ${timestamps.duration_minutes ? 
+                                        `<span class="ms-2"><i class="bi bi-clock"></i> ${timestamps.duration_minutes.toFixed(1)} min</span>` : ''}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <div class="key-metric-grid" style="display: inline-grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; text-align: center;">
+                                    <div title="Average total reward per episode - your main performance metric">
+                                        <div class="metric-label" style="font-size: 0.7rem;">Avg Reward</div>
+                                        <div class="metric-value" style="font-size: 1rem;">${km.cumulative_reward_mean?.toFixed(4) || 'N/A'}</div>
+                                    </div>
+                                    <div title="Average number of steps per episode - how long episodes last">
+                                        <div class="metric-label" style="font-size: 0.7rem;">Episode Length</div>
+                                        <div class="metric-value" style="font-size: 1rem;">${km.episode_length_mean?.toFixed(1) || 'N/A'}</div>
+                                    </div>
+                                    <div title="Total training steps completed in this run">
+                                        <div class="metric-label" style="font-size: 0.7rem;">Steps</div>
+                                        <div class="metric-value" style="font-size: 1rem;">${km.total_steps?.toLocaleString() || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                <i class="bi bi-chevron-down expand-icon" id="icon-${run.run_id}"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="run-card-body collapse" id="details-${run.run_id}">
+                        ${createRunDetails(run)}
+                    </div>
+                </div>
+            `;
+        }
+
+        function createRunDetails(run) {
+            const km = run.key_metrics || {};
+            const config = run.config || {};
+            const metrics = run.metrics || {};
+            const checkpoints = run.checkpoints || [];
+            const timestamps = run.timestamps || {};
+            
+            // Format duration nicely
+            let durationText = 'N/A';
+            if (timestamps.duration_minutes) {
+                const minutes = timestamps.duration_minutes;
+                if (minutes >= 60) {
+                    const hours = Math.floor(minutes / 60);
+                    const mins = Math.round(minutes % 60);
+                    durationText = `${hours}h ${mins}m`;
+                } else {
+                    durationText = `${minutes.toFixed(1)} minutes`;
+                }
+            }
+            
+            return `
+                <div class="details-section">
+                    <h6><i class="bi bi-speedometer2"></i> Performance Metrics</h6>
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <strong title="The average total reward your agent earned per episode. Higher is better - shows how well your agent is performing overall.">
+                                <span class="tooltip-text">Cumulative Reward (Mean):</span>
+                            </strong><br>
+                            Current: ${km.cumulative_reward_mean?.toFixed(4) || 'N/A'}<br>
+                            Max: ${km.cumulative_reward_max?.toFixed(4) || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="How many steps each episode lasted on average. Longer episodes might mean your agent is surviving longer, or taking more time to complete tasks.">
+                                <span class="tooltip-text">Episode Length:</span>
+                            </strong><br>
+                            ${km.episode_length_mean?.toFixed(2) || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="How random your agent's actions are. Higher means more exploration (trying new things), lower means more exploitation (sticking to what works).">
+                                <span class="tooltip-text">Entropy:</span>
+                            </strong><br>
+                            ${km.entropy?.toFixed(4) || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="Total number of training/inference steps completed in this run.">
+                                <span class="tooltip-text">Total Steps:</span>
+                            </strong><br>
+                            ${km.total_steps?.toLocaleString() || 'N/A'}
+                        </div>
+                    </div>
+                </div>
+
+                ${km.policy_loss != null || km.value_loss != null ? `
+                <div class="details-section" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+                    <h6><i class="bi bi-activity"></i> PPO Training Metrics (CRITICAL)</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <strong title="Shows if your policy is actually learning. Should decrease over time (trend down, not necessarily monotonic). Sudden spikes = instability. Flatline near zero = dead policy, not learning anymore. If this stops decreasing, your learning has plateaued.">
+                                <span class="tooltip-text">Policy Loss: 🔴 CRITICAL</span>
+                            </strong><br>
+                            Current: ${km.policy_loss?.toFixed(6) || 'N/A'}<br>
+                            Range: ${km.policy_loss_min?.toFixed(6) || 'N/A'} - ${km.policy_loss_max?.toFixed(6) || 'N/A'}
+                            ${km.policy_loss != null ? 
+                                (km.policy_loss < 0.01 ? '<br><span style="color: #856404;">⚠️ Very low - policy may have stopped learning</span>' :
+                                 km.policy_loss > 0.05 ? '<br><span style="color: #856404;">⚠️ High - potential instability</span>' :
+                                 '<br><span style="color: #155724;">✓ Normal range</span>') 
+                            : ''}
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <strong title="Measures how well your value function estimates future rewards. Bad value function = bad advantage estimates = bad policy updates. Should decrease and stabilize. High value loss means your advantage estimation is broken, which could explain stuck performance.">
+                                <span class="tooltip-text">Value Loss: 🔴 CRITICAL</span>
+                            </strong><br>
+                            Current: ${km.value_loss?.toFixed(6) || 'N/A'}<br>
+                            Range: ${km.value_loss_min?.toFixed(6) || 'N/A'} - ${km.value_loss_max?.toFixed(6) || 'N/A'}
+                            ${km.value_loss != null ? 
+                                (km.value_loss > 0.15 ? '<br><span style="color: #856404;">⚠️ High - value function struggling</span>' :
+                                 km.value_loss < 0.05 ? '<br><span style="color: #155724;">✓ Good convergence</span>' :
+                                 '<br><span style="color: #155724;">✓ Normal range</span>') 
+                            : ''}
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <strong title="Current learning rate (may decay over time based on schedule). Learning rate schedule: ${config.learning_rate_schedule || 'N/A'}">
+                                <span class="tooltip-text">Learning Rate:</span>
+                            </strong><br>
+                            Current: ${km.learning_rate_current?.toFixed(6) || 'N/A'}<br>
+                            Initial: ${config.learning_rate || 'N/A'}
+                        </div>
+                    </div>
+                    <div class="alert alert-warning mt-2 mb-0" style="font-size: 0.85rem;">
+                        <strong>⚠️ Missing Advanced Metrics:</strong> Explained Variance, Approximate KL, and Clip Fraction are not being logged. 
+                        These are critical for diagnosing PPO issues. To enable, you may need to modify ML-Agents or log additional metrics.
+                    </div>
+                </div>
+                ` : ''}
+
+                <div class="details-section">
+                    <h6><i class="bi bi-clock-history"></i> Training Duration</h6>
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <strong title="When this training run started.">
+                                <span class="tooltip-text">Start Time:</span>
+                            </strong><br>
+                            ${timestamps.start || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="When this training run finished.">
+                                <span class="tooltip-text">End Time:</span>
+                            </strong><br>
+                            ${timestamps.end || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="How long this training run took from start to finish.">
+                                <span class="tooltip-text">Total Duration:</span>
+                            </strong><br>
+                            ${durationText}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="Whether this was a training run (learning) or inference run (testing a trained model).">
+                                <span class="tooltip-text">Mode:</span>
+                            </strong><br>
+                            ${run.mode || 'N/A'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="details-section">
+                    <h6><i class="bi bi-gear"></i> Configuration</h6>
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <strong title="How fast the AI learns from mistakes. Higher = faster learning but might be unstable. Lower = slower but more stable.">
+                                <span class="tooltip-text">Learning Rate:</span>
+                            </strong> ${config.learning_rate || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="How many experiences the AI looks at once when learning. Bigger batches = smoother learning but need more memory.">
+                                <span class="tooltip-text">Batch Size:</span>
+                            </strong> ${config.batch_size || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="How many experiences to store before learning. Bigger buffer = more diverse training data.">
+                                <span class="tooltip-text">Buffer Size:</span>
+                            </strong> ${config.buffer_size || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="How many steps ahead the AI looks when calculating rewards. Shorter = focus on immediate rewards. Longer = consider future consequences.">
+                                <span class="tooltip-text">Time Horizon:</span>
+                            </strong> ${config.time_horizon || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="Size of the AI's brain (neural network width). More units = can learn more complex behaviors but slower.">
+                                <span class="tooltip-text">Hidden Units:</span>
+                            </strong> ${config.hidden_units || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="Depth of the AI's brain (neural network depth). More layers = can learn more complex patterns but slower.">
+                                <span class="tooltip-text">Num Layers:</span>
+                            </strong> ${config.num_layers || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="How much the AI cares about future rewards vs immediate rewards. 0.99 = cares a lot about the future. 0.5 = only cares about near-term.">
+                                <span class="tooltip-text">Gamma:</span>
+                            </strong> ${config.gamma || 'N/A'}
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <strong title="Total number of training steps planned for this run before it stops.">
+                                <span class="tooltip-text">Max Steps:</span>
+                            </strong> ${config.max_steps?.toLocaleString() || 'N/A'}
+                        </div>
+                    </div>
+                </div>
+
+                ${checkpoints.length > 0 ? `
+                    <div class="details-section">
+                        <h6 title="Saved snapshots of your AI model at different training stages - you can go back to any of these versions">
+                            <i class="bi bi-save"></i> <span class="tooltip-text">Checkpoints (${checkpoints.length})</span>
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th title="Training step when this checkpoint was saved">Steps</th>
+                                        <th title="Average reward at this checkpoint">Reward</th>
+                                        <th title="When this checkpoint was created">Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${checkpoints.map(cp => `
+                                        <tr>
+                                            <td>${cp.steps.toLocaleString()}</td>
+                                            <td>${cp.reward?.toFixed(4) || 'N/A'}</td>
+                                            <td>${new Date(cp.creation_time * 1000).toLocaleString()}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div class="details-section">
+                    <h6><i class="bi bi-code-square"></i> Full Configuration</h6>
+                    <button class="btn btn-sm btn-secondary mb-2" onclick="toggleSection('config-${run.run_id}')">
+                        Toggle Config JSON
+                    </button>
+                    <div id="config-${run.run_id}" style="display: none;">
+                        <pre>${JSON.stringify(run.full_config, null, 2)}</pre>
+                    </div>
+                </div>
+
+                <div class="details-section">
+                    <h6><i class="bi bi-graph-up"></i> All Metrics</h6>
+                    <button class="btn btn-sm btn-secondary mb-2" onclick="toggleSection('metrics-${run.run_id}')">
+                        Toggle All Metrics
+                    </button>
+                    <div id="metrics-${run.run_id}" style="display: none;">
+                        <pre>${JSON.stringify(metrics, null, 2)}</pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleDetails(runId) {
+            const details = document.getElementById(`details-${runId}`);
+            const icon = document.getElementById(`icon-${runId}`);
+            
+            if (details.classList.contains('show')) {
+                details.classList.remove('show');
+                icon.classList.remove('rotated');
+            } else {
+                details.classList.add('show');
+                icon.classList.add('rotated');
+                // Initialize tooltips for the newly shown content
+                setTimeout(initTooltips, 100);
+            }
+        }
+
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function filterRuns(filter) {
+            currentFilter = filter;
+            displayRuns();
+            setTimeout(initTooltips, 100);
+        }
+
+        function sortRuns() {
+            displayRuns();
+            setTimeout(initTooltips, 100);
+        }
+
+        async function loadComparisonData() {
+            try {
+                const response = await fetch('/api/compare');
+                const data = await response.json();
+                
+                updateComparisonCharts(data);
+                updateComparisonTable(data);
+                return true;
+            } catch (error) {
+                console.error('Error loading comparison data:', error);
+                return false;
+            }
+        }
+
+        function updateComparisonCharts(data) {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => chart.destroy());
+            charts = {};
+
+            const chartConfig = (label, data, color, beginAtZero = true) => ({
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.x),
+                    datasets: [{
+                        label: label,
+                        data: data.map(d => d.y),
+                        backgroundColor: color,
+                        borderColor: color,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: beginAtZero
+                        }
+                    }
+                }
+            });
+
+            charts.reward = new Chart(
+                document.getElementById('rewardChart'),
+                chartConfig('Cumulative Reward', data.metrics.cumulative_rewards, 'rgba(54, 162, 235, 0.7)')
+            );
+
+            charts.episodeLength = new Chart(
+                document.getElementById('episodeLengthChart'),
+                chartConfig('Episode Length', data.metrics.episode_lengths, 'rgba(255, 159, 64, 0.7)')
+            );
+
+            // Policy Loss Chart
+            if (data.metrics.policy_loss.length > 0) {
+                charts.policyLoss = new Chart(
+                    document.getElementById('policyLossChart'),
+                    chartConfig('Policy Loss', data.metrics.policy_loss, 'rgba(220, 53, 69, 0.7)', false)
+                );
+            }
+
+            // Value Loss Chart
+            if (data.metrics.value_loss.length > 0) {
+                charts.valueLoss = new Chart(
+                    document.getElementById('valueLossChart'),
+                    chartConfig('Value Loss', data.metrics.value_loss, 'rgba(255, 193, 7, 0.7)', false)
+                );
+            }
+
+            charts.steps = new Chart(
+                document.getElementById('stepsChart'),
+                chartConfig('Total Steps', data.metrics.steps, 'rgba(75, 192, 192, 0.7)')
+            );
+
+            charts.duration = new Chart(
+                document.getElementById('durationChart'),
+                chartConfig('Duration (min)', data.metrics.training_times, 'rgba(153, 102, 255, 0.7)')
+            );
+        }
+
+        function updateComparisonTable(data) {
+            const tbody = document.getElementById('comparisonTableBody');
+            tbody.innerHTML = data.runs.map(run => {
+                // Assess policy loss status
+                let policyLossStyle = '';
+                let policyLossText = run.policy_loss?.toFixed(6) || 'N/A';
+                if (run.policy_loss != null) {
+                    if (run.policy_loss < 0.01) {
+                        policyLossStyle = 'background: #fff3cd; color: #856404;';
+                        policyLossText += ' ⚠️';
+                    } else if (run.policy_loss > 0.05) {
+                        policyLossStyle = 'background: #f8d7da; color: #721c24;';
+                        policyLossText += ' ⚠️';
+                    }
+                }
+                
+                // Assess value loss status
+                let valueLossStyle = '';
+                let valueLossText = run.value_loss?.toFixed(6) || 'N/A';
+                if (run.value_loss != null) {
+                    if (run.value_loss > 0.15) {
+                        valueLossStyle = 'background: #f8d7da; color: #721c24;';
+                        valueLossText += ' ⚠️';
+                    } else if (run.value_loss < 0.05) {
+                        valueLossStyle = 'background: #d4edda; color: #155724;';
+                        valueLossText += ' ✓';
+                    }
+                }
+                
+                return `
+                    <tr>
+                        <td><strong>${run.run_id}</strong></td>
+                        <td>${run.date || 'N/A'}</td>
+                        <td><span class="mode-badge mode-${run.mode}">${run.mode}</span></td>
+                        <td>${run.reward?.toFixed(4) || 'N/A'}</td>
+                        <td>${run.reward_max?.toFixed(4) || 'N/A'}</td>
+                        <td>${run.episode_length?.toFixed(2) || 'N/A'}</td>
+                        <td style="${policyLossStyle}">${policyLossText}</td>
+                        <td style="${valueLossStyle}">${valueLossText}</td>
+                        <td>${run.steps?.toLocaleString() || 'N/A'}</td>
+                        <td>${run.duration?.toFixed(1) || 'N/A'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Initialize Bootstrap tooltips
+        function initTooltips() {
+            // Dispose of existing tooltips first to avoid duplicates
+            const existingTooltips = document.querySelectorAll('[title]');
+            existingTooltips.forEach(el => {
+                const existingTooltip = bootstrap.Tooltip.getInstance(el);
+                if (existingTooltip) {
+                    existingTooltip.dispose();
+                }
+            });
+            
+            // Create new tooltips
+            const tooltipTriggerList = document.querySelectorAll('[title]');
+            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => {
+                return new bootstrap.Tooltip(tooltipTriggerEl, {
+                    placement: 'auto',
+                    trigger: 'hover focus',
+                    delay: { show: 300, hide: 100 },
+                    html: false
+                });
+            });
+        }
+
+        // Load data on page load
+        loadData().then(() => {
+            // Initialize tooltips after content is loaded
+            setTimeout(initTooltips, 500);
+        });
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            loadData().then(() => {
+                // Reinitialize tooltips after refresh
+                setTimeout(initTooltips, 500);
+            });
+        }, 30000);
+    </script>
+</body>
+</html>
+

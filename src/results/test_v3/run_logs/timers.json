@@ -1,0 +1,42 @@
+{
+    "name": "root",
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1764222153",
+        "python_version": "3.10.12 | packaged by Anaconda, Inc. | (main, Jul  5 2023, 19:01:18) [MSC v.1916 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\Users\\victo\\.conda\\envs\\mlagents\\Scripts\\mlagents-learn parkour_config.yaml --run-id=test_v3 --force",
+        "mlagents_version": "1.1.0",
+        "mlagents_envs_version": "1.1.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.2.2+cu121",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1764222226"
+    },
+    "total": 72.2969013999973,
+    "count": 1,
+    "self": 0.007012100002611987,
+    "children": {
+        "run_training.setup": {
+            "total": 0.050582999996549916,
+            "count": 1,
+            "self": 0.050582999996549916
+        },
+        "TrainerController.start_learning": {
+            "total": 72.23930629999813,
+            "count": 1,
+            "self": 8.719999459572136e-05,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 72.23920100000396,
+                    "count": 1,
+                    "self": 72.23920100000396
+                },
+                "TrainerController._save_models": {
+                    "total": 1.809999957913533e-05,
+                    "count": 1,
+                    "self": 1.809999957913533e-05
+                }
+            }
+        }
+    }
+}

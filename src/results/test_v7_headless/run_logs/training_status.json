@@ -1,0 +1,47 @@
+{
+    "ParkourRunner": {
+        "checkpoints": [
+            {
+                "steps": 499915,
+                "file_path": "results\\test_v7_headless\\ParkourRunner\\ParkourRunner-499915.onnx",
+                "reward": 7.105655089020729,
+                "creation_time": 1764347398.0275633,
+                "auxillary_file_paths": [
+                    "results\\test_v7_headless\\ParkourRunner\\ParkourRunner-499915.pt"
+                ]
+            },
+            {
+                "steps": 999932,
+                "file_path": "results\\test_v7_headless\\ParkourRunner\\ParkourRunner-999932.onnx",
+                "reward": 7.628107043199761,
+                "creation_time": 1764350223.2798529,
+                "auxillary_file_paths": [
+                    "results\\test_v7_headless\\ParkourRunner\\ParkourRunner-999932.pt"
+                ]
+            },
+            {
+                "steps": 1227952,
+                "file_path": "results\\test_v7_headless\\ParkourRunner\\ParkourRunner-1227952.onnx",
+                "reward": 8.976848883506579,
+                "creation_time": 1764350669.8582623,
+                "auxillary_file_paths": [
+                    "results\\test_v7_headless\\ParkourRunner\\ParkourRunner-1227952.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 1227952,
+            "file_path": "results\\test_v7_headless\\ParkourRunner.onnx",
+            "reward": 8.976848883506579,
+            "creation_time": 1764350669.8582623,
+            "auxillary_file_paths": [
+                "results\\test_v7_headless\\ParkourRunner\\ParkourRunner-1227952.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cu121"
+    }
+}
