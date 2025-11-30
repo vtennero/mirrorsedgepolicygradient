@@ -24,6 +24,9 @@ public class ParkourAgent : Agent
     private Vector3 velocity; // For gravity and jumping
     private int currentAction = 0; // Store current action to apply in FixedUpdate
     
+    // Public property for animation sync
+    public int CurrentAction => currentAction;
+    
     // Tracking metrics for better diagnostics
     private float episodeReward = 0f;
     private int jumpCount = 0;

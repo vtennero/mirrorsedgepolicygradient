@@ -85,15 +85,7 @@ MonoBehaviour:
   platformCount: 8
   platformSpacing: 15
   platformSize: {x: 12, y: 0.5, z: 6}
-  platformHeights:
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
+  platformHeights: []
 --- !u!1 &7703651773684523594
 GameObject:
   m_ObjectHideFlags: 0

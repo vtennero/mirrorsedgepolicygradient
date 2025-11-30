@@ -26,6 +26,12 @@ public class TrainingArea : MonoBehaviour
     [SerializeField] private Vector2 gapRange = new Vector2(2f, 8f); // Safe range: agent can jump ~19 units
     [Tooltip("Platform width will vary between [min, max] units")]
     [SerializeField] private Vector2 platformWidthRange = new Vector2(10f, 14f);
+    [Tooltip("Randomize platform heights (vertical position)")]
+    [SerializeField] private bool randomizeHeights = true;
+    [Tooltip("Max height difference between consecutive platforms (units). Agent can jump ~6.4 units high.")]
+    [SerializeField] private Vector2 heightChangeRange = new Vector2(-1.5f, 2.5f); // Safe range for varied jumps
+    [Tooltip("Absolute min/max heights to keep platforms within reasonable bounds")]
+    [SerializeField] private Vector2 absoluteHeightRange = new Vector2(-0.5f, 5f);
     [Tooltip("Random seed for reproducible training (0 = random each time)")]
     [SerializeField] private int randomSeed = 0;
     
@@ -70,24 +76,44 @@ public class TrainingArea : MonoBehaviour
         platformsContainer.transform.SetParent(transform);
         platformsContainer.transform.localPosition = Vector3.zero;
         
-        // If no heights array provided, create flat platforms
-        if (platformHeights == null || platformHeights.Length == 0)
-        {
-            platformHeights = new float[platformCount];
-            for (int i = 0; i < platformCount; i++)
-            {
-                platformHeights[i] = 0f; // Flat for initial testing
-            }
-        }
-        
         // Initialize random seed if specified
         if (randomSeed > 0)
         {
             Random.InitState(randomSeed);
         }
         
+        // If no heights array provided, generate heights (with optional randomization)
+        if (platformHeights == null || platformHeights.Length == 0)
+        {
+            platformHeights = new float[platformCount];
+            
+            // First platform at base height
+            platformHeights[0] = Mathf.Clamp(0f, absoluteHeightRange.x, absoluteHeightRange.y);
+            
+            // Generate subsequent platform heights with randomization
+            for (int i = 1; i < platformCount; i++)
+            {
+                if (randomizeHeights && randomizePlatforms)
+                {
+                    // Random height change from previous platform
+                    float heightChange = Random.Range(heightChangeRange.x, heightChangeRange.y);
+                    float newHeight = platformHeights[i - 1] + heightChange;
+                    
+                    // Clamp to absolute bounds
+                    platformHeights[i] = Mathf.Clamp(newHeight, absoluteHeightRange.x, absoluteHeightRange.y);
+                }
+                else
+                {
+                    // Flat platforms
+                    platformHeights[i] = platformHeights[0];
+                }
+            }
+        }
+        
         // Generate platforms with optional randomization
         float currentXPosition = 0f;
+        float previousHeight = 0f;
+        
         for (int i = 0; i < platformCount && i < platformHeights.Length; i++)
         {
             // Randomize platform width if enabled
@@ -111,8 +137,28 @@ public class TrainingArea : MonoBehaviour
                     ? Random.Range(platformWidthRange.x, platformWidthRange.y) 
                     : platformSize.x;
                 
-                currentXPosition += (platformWidth / 2f) + gap + (nextPlatformWidth / 2f);
+                float nextXPosition = currentXPosition + (platformWidth / 2f) + gap + (nextPlatformWidth / 2f);
+                
+                // Validate jump feasibility (editor-only debug check)
+                #if UNITY_EDITOR
+                if (randomizePlatforms && randomizeHeights && i > 0)
+                {
+                    float horizontalDist = nextXPosition - currentXPosition;
+                    float heightDiff = platformHeights[i + 1] - platformHeights[i];
+                    
+                    if (!IsJumpFeasible(horizontalDist, heightDiff))
+                    {
+                        Debug.LogWarning($"Platform {i} -> {i+1}: Potentially difficult jump! " +
+                            $"Gap: {horizontalDist:F1}u, Height diff: {heightDiff:F1}u. " +
+                            $"Agent may struggle with this configuration.");
+                    }
+                }
+                #endif
+                
+                currentXPosition = nextXPosition;
             }
+            
+            previousHeight = platformHeights[i];
         }
     }
     
@@ -127,6 +173,61 @@ public class TrainingArea : MonoBehaviour
         // Ensure collider exists (primitives come with BoxCollider)
         // Add layer or tag if needed for identification
         platform.layer = LayerMask.NameToLayer("Default");
+    }
+    
+    /// <summary>
+    /// Checks if a jump between two platforms is physically feasible.
+    /// Uses projectile motion physics with agent's movement parameters.
+    /// </summary>
+    /// <param name="horizontalDist">Horizontal gap distance</param>
+    /// <param name="heightDiff">Height difference (positive = jumping up, negative = jumping down)</param>
+    /// <returns>True if jump is feasible</returns>
+    bool IsJumpFeasible(float horizontalDist, float heightDiff)
+    {
+        // Agent physics parameters (from CharacterConfig defaults)
+        float jumpForce = 16f;  // Initial upward velocity
+        float gravity = -20f;   // Downward acceleration
+        float moveSpeed = 6f;   // Horizontal movement speed
+        
+        // Maximum jump height (at peak of arc): h_max = v² / (2 * |g|)
+        float maxJumpHeight = (jumpForce * jumpForce) / (2f * Mathf.Abs(gravity));
+        
+        // For jumping UP: check if height difference exceeds max jump height
+        if (heightDiff > 0 && heightDiff > maxJumpHeight * 0.9f) // 90% safety margin
+        {
+            return false;
+        }
+        
+        // Calculate time in air to reach target height
+        // Using: y = v₀*t + 0.5*g*t²
+        // Rearranged: 0.5*g*t² + v₀*t - heightDiff = 0
+        float a = 0.5f * gravity;
+        float b = jumpForce;
+        float c = -heightDiff;
+        
+        float discriminant = b * b - 4 * a * c;
+        if (discriminant < 0)
+        {
+            // No real solution - jump not possible
+            return false;
+        }
+        
+        // Two solutions: time to reach height on way up and way down
+        // We want the positive time solution
+        float t1 = (-b + Mathf.Sqrt(discriminant)) / (2 * a);
+        float t2 = (-b - Mathf.Sqrt(discriminant)) / (2 * a);
+        float timeToTarget = Mathf.Max(t1, t2);
+        
+        if (timeToTarget <= 0)
+        {
+            return false;
+        }
+        
+        // Calculate maximum horizontal distance achievable in that time
+        float maxHorizontalDist = moveSpeed * timeToTarget;
+        
+        // Check if horizontal distance is feasible (with 80% safety margin for running jumps)
+        return horizontalDist <= maxHorizontalDist * 1.8f; // Agent can build up speed
     }
     
     /// <summary>

@@ -1,0 +1,20 @@
+{
+    "ParkourRunner": {
+        "checkpoints": [
+            {
+                "steps": 499880,
+                "file_path": "results\\test_v11_inference\\ParkourRunner\\ParkourRunner-499880.onnx",
+                "reward": 9.844031773236116,
+                "creation_time": 1764456995.6597235,
+                "auxillary_file_paths": [
+                    "results\\test_v11_inference\\ParkourRunner\\ParkourRunner-499880.pt"
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cu121"
+    }
+}

@@ -986,6 +986,7 @@ GameObject:
   - component: {fileID: 961739752}
   - component: {fileID: 961739751}
   - component: {fileID: 961739750}
+  - component: {fileID: 961739754}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1111,6 +1112,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &961739754
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 961739749}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f883f01de08fe8b469bf3cc0dd8d7d49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
+  player: {fileID: 1782929367}
+  offset: {x: -5, y: 2, z: 0}
+  rotationSpeed: -1
+  verticalRotationLimit: -1
 --- !u!1001 &970576846
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1527,6 +1544,55 @@ MonoBehaviour:
   DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
+--- !u!1 &1361112226
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1361112228}
+  - component: {fileID: 1361112227}
+  m_Layer: 0
+  m_Name: InferenceVisualEnhancer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1361112227
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1361112226}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e68423c4c90a823449367f511e9ce08f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InferenceVisualEnhancer
+  faithPrefab: {fileID: 0}
+  animatorController: {fileID: 0}
+  singleAgentMode: 1
+  buildingCount: 200
+  buildingSpawnRange: {x: -400, y: 400}
+--- !u!4 &1361112228
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1361112226}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1371971860
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1859,6 +1925,11 @@ MonoBehaviour:
   DecisionPeriod: 5
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
+--- !u!4 &1782929367 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2627335320194099158, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+  m_PrefabInstance: {fileID: 6209791728788788707}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1851960481
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2143,6 +2214,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: TrainingArea
       objectReference: {fileID: 0}
+    - target: {fileID: 8011289380451551676, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -2174,3 +2249,4 @@ SceneRoots:
   - {fileID: 1371971860}
   - {fileID: 961739753}
   - {fileID: 203844589}
+  - {fileID: 1361112228}
