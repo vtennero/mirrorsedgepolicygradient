@@ -2218,14 +2218,41 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8899049188731059616, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 0b5afb4c2ce85a245b6b91550ab73822, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7703651773684523594, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6209791728788788709}
     - targetCorrespondingSourceObject: {fileID: 8639784839225256488, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1782929362}
   m_SourcePrefab: {fileID: 100100000, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+--- !u!1 &6209791728788788708 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7703651773684523594, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+  m_PrefabInstance: {fileID: 6209791728788788707}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6209791728788788709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6209791728788788708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2fedbd9ff19fdbe40b511e79631942b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnimusWallSetup
+  wallColor: {r: 0, g: 0.8, b: 1, a: 0.3}
+  useGridPattern: 1
+  makeFullyOpaque: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
