@@ -11,6 +11,9 @@ MLAGENTS_DEMO_MODE=true
 ```bash
 cd src
 mlagents-learn parkour_config.yaml --run-id=demo --initialize-from=test_v11 --inference
+mlagents-learn parkour_config.yaml --run-id=demo_$(date +%Y-%m-%d_%H-%M-%S) --initialize-from=test_v11 --inference
+
+
 ```
 
 Then press **Play** in Unity Editor.
