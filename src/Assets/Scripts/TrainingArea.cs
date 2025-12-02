@@ -14,7 +14,7 @@ public class TrainingArea : MonoBehaviour
     
     [Header("Platform Generation")]
     [SerializeField] private bool generatePlatformsOnStart = true;
-    [SerializeField] private int platformCount = 8;
+    [SerializeField] private int platformCount = 20;
     [SerializeField] private float platformSpacing = 15f;
     [SerializeField] private Vector3 platformSize = new Vector3(12f, 0.5f, 6f);
     [SerializeField] private float[] platformHeights; // Fixed heights for deterministic training
@@ -240,8 +240,13 @@ public class TrainingArea : MonoBehaviour
             return agentSpawnPoint.position;
         }
         
-        // Fallback: spawn at training area origin + offset
-        return transform.position + new Vector3(0, 2.5f, 0);
+        // Fallback: spawn at training area origin + offset (on first platform)
+        // First platform is at y=0, height 0.5, so top is at y=0.25.
+        // CharacterController center is at y=1 relative to transform, height=2.
+        // CharacterController bottom = transform.y + (center.y - height/2) = transform.y + (1 - 1) = transform.y
+        // To have bottom slightly above platform (to prevent sinking), spawn at y=1.25
+        // This puts CharacterController bottom at y=1.25, which is 1 unit above platform top
+        return transform.position + new Vector3(0, 1.25f, 0);
     }
     
     /// <summary>

@@ -2,6 +2,7 @@ using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
+using Unity.MLAgents.Policies;
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(DecisionRequester))]
@@ -56,7 +57,7 @@ public class ParkourAgent : Agent
         InitializeFromConfig();
         
         startPos = transform.position;
-        lastProgressZ = startPos.z;
+        lastProgressZ = startPos.x; // Fixed: track X, not Z
     }
     
     void InitializeFromConfig()
@@ -66,6 +67,9 @@ public class ParkourAgent : Agent
         if (moveSpeed < 0) moveSpeed = config.moveSpeed;
         if (jumpForce < 0) jumpForce = config.jumpForce;
         if (gravity < 0) gravity = config.gravity;
+        
+        // Debug: Log initialized values
+        Debug.Log($"[ParkourAgent] Initialized - moveSpeed={moveSpeed}, jumpForce={jumpForce}, gravity={gravity}");
     }
     
     public override void OnEpisodeBegin()
@@ -78,7 +82,7 @@ public class ParkourAgent : Agent
             trainingArea.ResetArea();
             transform.position = trainingArea.GetAgentSpawnPosition();
             target = trainingArea.GetTargetTransform(); // Update target reference
-            Debug.Log($"[ParkourAgent] Reset to position: {transform.position}, Target: {target?.position}");
+            Debug.Log($"[ParkourAgent] Reset to position: {transform.position}, Target: {target?.position}, Target X: {target?.position.x:F1}");
         }
         else
         {
@@ -92,6 +96,7 @@ public class ParkourAgent : Agent
         
         episodeTimer = 0f;
         lastProgressZ = transform.position.x; // Track X position for progress
+        startPos = transform.position; // Update startPos to current spawn position
         velocity = Vector3.zero;
         
         // Reset episode metrics
@@ -106,6 +111,16 @@ public class ParkourAgent : Agent
     
     public override void CollectObservations(VectorSensor sensor)
     {
+        // Debug: Log observations occasionally to verify they're not all zeros
+        if (Time.frameCount == 1 || Time.frameCount % 500 == 0)
+        {
+            if (target != null)
+            {
+                Vector3 toTarget = target.position - transform.position;
+                Debug.Log($"[ParkourAgent] Observations - ToTarget: {toTarget}, Velocity: {controller.velocity}, Grounded: {controller.isGrounded}, Pos: {transform.position}");
+            }
+        }
+        
         // Position relative to target (with null check)
         if (target != null)
         {
@@ -177,6 +192,15 @@ public class ParkourAgent : Agent
         if (currentAction == 2) // Move forward
         {
             horizontalMove = transform.forward * moveSpeed * Time.fixedDeltaTime;
+            // Debug: Log when forward action is taken
+            if (Time.frameCount % 50 == 0)
+            {
+                Debug.Log($"[ParkourAgent] Forward action active! currentAction={currentAction}, forward={transform.forward}, moveSpeed={moveSpeed}, horizontalMove={horizontalMove}");
+            }
+        }
+        else if (Time.frameCount % 100 == 0)
+        {
+            Debug.Log($"[ParkourAgent] NOT moving forward. currentAction={currentAction} (0=idle, 1=jump, 2=forward), pos={transform.position}");
         }
         
         // Apply gravity continuously
@@ -196,13 +220,29 @@ public class ParkourAgent : Agent
         if (controller != null)
         {
             controller.Move(finalMovement);
+            // Debug: Log actual movement applied
+            if (Time.frameCount % 100 == 0 && horizontalMove.magnitude > 0.001f)
+            {
+                Debug.Log($"[ParkourAgent] Movement applied! horizontalMove={horizontalMove}, finalMovement={finalMovement}, pos before={transform.position}");
+            }
+        }
+        else
+        {
+            Debug.LogError("[ParkourAgent] CharacterController is NULL! Movement cannot be applied!");
         }
         
         // Emergency fall reset (backup if OnActionReceived not called)
         CharacterConfig configCheck = CharacterConfigManager.Config;
         if (transform.position.y < configCheck.fallThreshold - 5f)
         {
-            Debug.LogWarning($"ParkourAgent '{name}': Emergency fall reset at y={transform.position.y}. Check training setup!");
+            Debug.LogWarning($"[ParkourAgent] EMERGENCY FALL RESET! Agent y={transform.position.y:F2} < {configCheck.fallThreshold - 5f}. Position: {transform.position}. Agent is falling through world!");
+            
+            // Flash red screen in demo mode
+            if (DemoModeScreenFlash.Instance != null)
+            {
+                DemoModeScreenFlash.Instance.FlashRed();
+            }
+            
             EndEpisode();
         }
         
@@ -243,6 +283,20 @@ public class ParkourAgent : Agent
     {
         // Discrete actions: 0=nothing, 1=jump, 2=run forward
         currentAction = actions.DiscreteActions[0];
+        
+        // Debug: Check if we're in inference and log model status
+        if (Time.frameCount == 1 || Time.frameCount % 500 == 0)
+        {
+            BehaviorParameters bp = GetComponent<BehaviorParameters>();
+            bool hasModel = bp != null && bp.Model != null;
+            Debug.Log($"[ParkourAgent] Frame {Time.frameCount}: Action={currentAction}, HasModel={hasModel}, BehaviorType={bp?.BehaviorType}, Deterministic={bp?.DeterministicInference}");
+        }
+        
+        // Debug: Log action distribution every 100 steps
+        if (Time.frameCount % 100 == 0)
+        {
+            Debug.Log($"[ParkourAgent] Action received: {currentAction} (0=idle, 1=jump, 2=forward). Total actions - Idle: {idleActionCount}, Jump: {jumpCount}, Forward: {forwardActionCount}");
+        }
         
         episodeTimer += Time.fixedDeltaTime;
         
@@ -293,32 +347,77 @@ public class ParkourAgent : Agent
         episodeReward += config.timePenalty;
         
         // 3. Reached target (only if target is assigned)
-        if (target != null && Vector3.Distance(transform.position, target.position) < config.targetReachDistance)
+        if (target != null)
         {
-            AddReward(config.targetReachReward);
-            episodeReward += config.targetReachReward;
-            LogEpisodeStats("Success");
-            EndEpisode();
+            float distanceToTarget = Vector3.Distance(transform.position, target.position);
+            // Debug: Log target position and distance every 50 steps
+            if (Time.frameCount % 50 == 0)
+            {
+                Debug.Log($"[ParkourAgent] Agent X: {transform.position.x:F1}, Target X: {target.position.x:F1}, Distance: {distanceToTarget:F1}");
+            }
+            
+            if (distanceToTarget < config.targetReachDistance)
+            {
+                Debug.Log($"[ParkourAgent] REACHED TARGET! Agent: {transform.position}, Target: {target.position}, Distance: {distanceToTarget:F2}");
+                AddReward(config.targetReachReward);
+                episodeReward += config.targetReachReward;
+                LogEpisodeStats("Success");
+                
+                // Flash green screen in demo mode
+                if (DemoModeScreenFlash.Instance != null)
+                {
+                    DemoModeScreenFlash.Instance.FlashGreen();
+                }
+                
+                EndEpisode();
+            }
         }
         
         // 4. Fell off / timeout
-        if (transform.position.y < config.fallThreshold || episodeTimer > config.episodeTimeout)
+        bool fell = transform.position.y < config.fallThreshold;
+        bool timedOut = episodeTimer > config.episodeTimeout;
+        if (fell || timedOut)
         {
+            string reason = fell ? $"Fell (y={transform.position.y:F2} < {config.fallThreshold})" : $"Timeout (t={episodeTimer:F2} > {config.episodeTimeout})";
+            Debug.LogError($"[ParkourAgent] Episode ending: {reason}. Agent pos: {transform.position}, Timer: {episodeTimer:F2}s, Grounded: {controller.isGrounded}");
             AddReward(config.fallPenalty);
             episodeReward += config.fallPenalty;
-            LogEpisodeStats(transform.position.y < config.fallThreshold ? "Fell" : "Timeout");
+            LogEpisodeStats(fell ? "Fell" : "Timeout");
+            
+            // Flash red screen in demo mode
+            if (DemoModeScreenFlash.Instance != null)
+            {
+                DemoModeScreenFlash.Instance.FlashRed();
+            }
+            
             EndEpisode();
         }
     }
     
     public override void Heuristic(in ActionBuffers actionsOut)
     {
-        // Manual control for testing
+        // Manual control for testing (only works in Editor with old Input System)
         var discreteActions = actionsOut.DiscreteActions;
         discreteActions[0] = 0; // Default: nothing
         
-        if (Input.GetKey(KeyCode.Space)) discreteActions[0] = 1; // Jump
-        if (Input.GetKey(KeyCode.W)) discreteActions[0] = 2; // Forward
+        // Try to use old Input System (only works if not using new Input System package)
+        // During training, this won't be called anyway (agent uses trained policy)
+        try
+        {
+            #if UNITY_EDITOR
+            // Only try input in editor, and only if old Input System is active
+            if (UnityEngine.Input.inputString != null) // Check if old Input System is available
+            {
+                if (UnityEngine.Input.GetKey(KeyCode.Space)) discreteActions[0] = 1; // Jump
+                if (UnityEngine.Input.GetKey(KeyCode.W)) discreteActions[0] = 2; // Forward
+            }
+            #endif
+        }
+        catch (System.InvalidOperationException)
+        {
+            // New Input System is active - heuristic not available, just return default (0)
+            discreteActions[0] = 0;
+        }
     }
     
     /// <summary>

@@ -4,7 +4,7 @@ public class LevelGenerator : MonoBehaviour
 {
     [Header("Platform Configuration")]
     public GameObject platformPrefab;
-    public int platformCount = 8;
+    public int platformCount = 20;
     public float spacing = 15f;  // MUCH longer distances for running
     public float minHeight = 0f;
     public float maxHeight = 4f; // More dramatic height differences

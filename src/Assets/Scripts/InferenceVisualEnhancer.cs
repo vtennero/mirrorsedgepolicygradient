@@ -39,11 +39,8 @@ public class InferenceVisualEnhancer : MonoBehaviour
         // Check demo mode first (file-based, doesn't depend on ML-Agents)
         CheckDemoMode();
         
-        // For single agent mode, disable extra areas immediately
-        if (isDemoMode && singleAgentMode)
-        {
-            DisableExtraTrainingAreas();
-        }
+        // DON'T disable training areas here - wait for inference mode check
+        // Training mode needs all areas active, only inference should disable extras
         
         // Check inference mode and enable visuals (may need to wait for ML-Agents to initialize)
         StartCoroutine(CheckAndEnableVisuals());
@@ -125,7 +122,7 @@ public class InferenceVisualEnhancer : MonoBehaviour
         
         if (isDemoMode && isInferenceMode)
         {
-            Debug.Log("✓ Enabling visual enhancements...");
+            Debug.Log("✓ Enabling visual enhancements for inference mode...");
             EnableVisuals();
         }
         else if (isDemoMode && !isInferenceMode)
@@ -134,7 +131,9 @@ public class InferenceVisualEnhancer : MonoBehaviour
         }
         else
         {
-            Debug.Log($"Skipping visual enhancement (Demo={isDemoMode}, Inference={isInferenceMode})");
+            // Training mode - ensure all training areas are active
+            Debug.Log($"Training mode detected (Demo={isDemoMode}, Inference={isInferenceMode}). Ensuring all training areas are active.");
+            EnsureAllTrainingAreasActive();
         }
     }
     
@@ -261,6 +260,31 @@ public class InferenceVisualEnhancer : MonoBehaviour
         else
         {
             Debug.Log($"Only 1 TrainingArea active ({firstArea.name}), nothing to disable.");
+        }
+    }
+    
+    void EnsureAllTrainingAreasActive()
+    {
+        // During training, ensure all training areas are active (for parallel training)
+        TrainingArea[] allAreas = FindObjectsOfType<TrainingArea>(true); // Include inactive
+        int activated = 0;
+        
+        foreach (TrainingArea area in allAreas)
+        {
+            if (!area.gameObject.activeInHierarchy)
+            {
+                area.gameObject.SetActive(true);
+                activated++;
+            }
+        }
+        
+        if (activated > 0)
+        {
+            Debug.Log($"✓ Activated {activated} TrainingAreas for training mode. Total active: {allAreas.Length}");
+        }
+        else
+        {
+            Debug.Log($"All {allAreas.Length} TrainingAreas are already active for training.");
         }
     }
     

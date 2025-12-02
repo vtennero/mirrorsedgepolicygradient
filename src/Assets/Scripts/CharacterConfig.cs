@@ -102,7 +102,7 @@ public class CharacterConfig : ScriptableObject
     public float fallPenalty = -1f;
     
     [Tooltip("Maximum episode time in seconds before timeout")]
-    public float episodeTimeout = 30f;
+    public float episodeTimeout = 90f; // Increased from 30s to match 300-unit target distance (was 105 units)
     
     [Tooltip("Raycast distance for obstacle detection (in units)")]
     public float obstacleRaycastDistance = 10f;
