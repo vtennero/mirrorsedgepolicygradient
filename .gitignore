@@ -105,3 +105,24 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# ML-Agents / Reinforcement Learning model files (large binary files)
+*.onnx
+*.pt
+*.pth
+*.h5
+*.pb
+*.ckpt
+
+# TensorBoard event files
+*.tfevents.*
+events.out.tfevents.*
+
+# ML training results directory (contains large model files)
+/results/
+**/results/
+
+# Large data files
+*.bin
+*.data
+*.weights
