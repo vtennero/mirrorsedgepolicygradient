@@ -1,22 +1,20 @@
 # MDP Variables
 
 ## State Space (Observations)
-**Total: 14 floats**
+**Total: 13 floats**
 
 - `toTarget` (3 floats): Target position relative to agent `(target.position - transform.position)`
 - `velocity` (3 floats): Agent velocity `controller.velocity`
 - `isGrounded` (1 float): Grounded state `1.0 if grounded, 0.0 if not`
 - `platformRaycasts` (5 floats): Downward raycast distances at 2f, 4f, 6f, 8f, 10f ahead, normalized by maxRayDist (10f)
 - `obstacleDistance` (1 float): Forward obstacle raycast distance, normalized by `obstacleRaycastDistance` (10f)
-- `stamina` (1 float): Normalized stamina `currentStamina / maxStamina` (0.0 to 1.0)
 
 ## Action Space
-**Discrete, 1 branch, 4 actions**
+**Discrete, 1 branch, 3 actions**
 
 - `0`: Idle/nothing
-- `1`: Jump (only if `controller.isGrounded` AND `stamina >= 5.0`, blocked if insufficient)
-- `2`: Jog forward (normal speed, 6f)
-- `3`: Sprint forward (faster speed, 12f, consumes stamina, blocked if `stamina <= 0` → falls back to jog)
+- `1`: Jump (only if `controller.isGrounded`)
+- `2`: Run forward
 
 ## Rewards
 
@@ -25,12 +23,4 @@
 - `timePenalty`: `-0.001` per fixed update
 - `targetReachReward`: `+10.0` (if `distanceToTarget < 2.0`)
 - `fallPenalty`: `-1.0` (if `y < -5.0` or `episodeTimer > 90.0`)
-
-## Stamina System
-
-- `maxStamina`: 100.0
-- `staminaConsumptionRate`: 33.33 per second (full bar depletes in 3 seconds)
-- `jumpStaminaCost`: 5.0 per jump
-- `staminaRegenRate`: 20.0 per second (regenerates when not sprinting/jumping)
-- Stamina consumption/regeneration happens in `FixedUpdate()` (physics step)
 

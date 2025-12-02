@@ -33,14 +33,7 @@ public class ParkourAgent : Agent
     private int jumpCount = 0;
     private int forwardActionCount = 0;
     private int idleActionCount = 0;
-    private int sprintActionCount = 0;
     private float maxDistanceReached = 0f;
-    
-    // Stamina system
-    private float currentStamina = 100f;
-    
-    // Public property for animation sync (checks if actually sprinting, considering stamina)
-    public bool IsSprinting => currentAction == 3 && currentStamina > 0f;
     
     public override void Initialize()
     {
@@ -111,12 +104,7 @@ public class ParkourAgent : Agent
         jumpCount = 0;
         forwardActionCount = 0;
         idleActionCount = 0;
-        sprintActionCount = 0;
         maxDistanceReached = 0f;
-        
-        // Reset stamina to max
-        CharacterConfig config = CharacterConfigManager.Config;
-        currentStamina = config.maxStamina;
         
         Debug.Log($"[ParkourAgent] OnEpisodeBegin completed successfully");
     }
@@ -194,56 +182,25 @@ public class ParkourAgent : Agent
             ? obstacleHit.distance : raycastDist;
         sensor.AddObservation(obstacleDistance / raycastDist); // 1 float, normalized
         
-        // Stamina (normalized: 0.0 to 1.0)
-        float normalizedStamina = currentStamina / config.maxStamina;
-        sensor.AddObservation(normalizedStamina); // 1 float
-        
-        // Total: 3 + 3 + 1 + 5 + 1 + 1 = 14 observations
+        // Total: 3 + 3 + 1 + 5 + 1 = 13 observations
     }
     
     void FixedUpdate()
     {
-        // === STAMINA SYSTEM (in physics step) ===
-        CharacterConfig config = CharacterConfigManager.Config;
-        
-        // Consume stamina while sprinting (action 3)
-        if (currentAction == 3 && currentStamina > 0f)
-        {
-            currentStamina -= config.staminaConsumptionRate * Time.fixedDeltaTime;
-            currentStamina = Mathf.Max(0f, currentStamina); // Clamp to 0
-            
-            // If stamina depleted during sprint, fall back to jog
-            if (currentStamina <= 0f)
-            {
-                currentAction = 2; // Fall back to jog
-            }
-        }
-        // Regenerate stamina when not sprinting and not jumping
-        else if (currentAction != 3 && currentAction != 1)
-        {
-            currentStamina += config.staminaRegenRate * Time.fixedDeltaTime;
-            currentStamina = Mathf.Min(config.maxStamina, currentStamina); // Clamp to max
-        }
-        
         // Calculate horizontal movement
         Vector3 horizontalMove = Vector3.zero;
-        float currentMoveSpeed = moveSpeed; // Default to jog speed
-        
-        if (currentAction == 2) // Jog forward
+        if (currentAction == 2) // Move forward
         {
-            currentMoveSpeed = moveSpeed;
-            horizontalMove = transform.forward * currentMoveSpeed * Time.fixedDeltaTime;
+            horizontalMove = transform.forward * moveSpeed * Time.fixedDeltaTime;
+            // Debug: Log when forward action is taken
+            if (Time.frameCount % 50 == 0)
+            {
+                Debug.Log($"[ParkourAgent] Forward action active! currentAction={currentAction}, forward={transform.forward}, moveSpeed={moveSpeed}, horizontalMove={horizontalMove}");
+            }
         }
-        else if (currentAction == 3 && currentStamina > 0f) // Sprint forward (only if stamina available)
+        else if (Time.frameCount % 100 == 0)
         {
-            currentMoveSpeed = config.sprintSpeed;
-            horizontalMove = transform.forward * currentMoveSpeed * Time.fixedDeltaTime;
-        }
-        
-        // Debug: Log when movement action is taken
-        if (Time.frameCount % 50 == 0 && horizontalMove.magnitude > 0.001f)
-        {
-            Debug.Log($"[ParkourAgent] Movement active! currentAction={currentAction}, speed={currentMoveSpeed}, stamina={currentStamina:F1}, horizontalMove={horizontalMove}");
+            Debug.Log($"[ParkourAgent] NOT moving forward. currentAction={currentAction} (0=idle, 1=jump, 2=forward), pos={transform.position}");
         }
         
         // Apply gravity continuously
@@ -254,6 +211,7 @@ public class ParkourAgent : Agent
         else if (velocity.y < 0)
         {
             // Reset velocity when grounded
+            CharacterConfig config = CharacterConfigManager.Config;
             velocity.y = config.groundedVelocityReset;
         }
         
@@ -274,9 +232,10 @@ public class ParkourAgent : Agent
         }
         
         // Emergency fall reset (backup if OnActionReceived not called)
-        if (transform.position.y < config.fallThreshold - 5f)
+        CharacterConfig configCheck = CharacterConfigManager.Config;
+        if (transform.position.y < configCheck.fallThreshold - 5f)
         {
-            Debug.LogWarning($"[ParkourAgent] EMERGENCY FALL RESET! Agent y={transform.position.y:F2} < {config.fallThreshold - 5f}. Position: {transform.position}. Agent is falling through world!");
+            Debug.LogWarning($"[ParkourAgent] EMERGENCY FALL RESET! Agent y={transform.position.y:F2} < {configCheck.fallThreshold - 5f}. Position: {transform.position}. Agent is falling through world!");
             
             // Flash red screen in demo mode
             if (DemoModeScreenFlash.Instance != null)
@@ -322,26 +281,8 @@ public class ParkourAgent : Agent
     
     public override void OnActionReceived(ActionBuffers actions)
     {
-        // Get config once at the start of the method
-        CharacterConfig config = CharacterConfigManager.Config;
-        
-        // Discrete actions: 0=idle, 1=jump, 2=jog forward, 3=sprint forward
+        // Discrete actions: 0=nothing, 1=jump, 2=run forward
         currentAction = actions.DiscreteActions[0];
-        
-        // Block sprint (action 3) if no stamina - fall back to jog (action 2)
-        if (currentAction == 3 && currentStamina <= 0f)
-        {
-            currentAction = 2; // Fall back to jog
-        }
-        
-        // Block jump (action 1) if insufficient stamina
-        if (currentAction == 1)
-        {
-            if (currentStamina < config.jumpStaminaCost)
-            {
-                currentAction = 0; // Block jump, do nothing
-            }
-        }
         
         // Debug: Check if we're in inference and log model status
         if (Time.frameCount == 1 || Time.frameCount % 500 == 0)
@@ -354,28 +295,27 @@ public class ParkourAgent : Agent
         // Debug: Log action distribution every 100 steps
         if (Time.frameCount % 100 == 0)
         {
-            Debug.Log($"[ParkourAgent] Action received: {currentAction} (0=idle, 1=jump, 2=jog, 3=sprint). Stamina: {currentStamina:F1}/{CharacterConfigManager.Config.maxStamina:F1}. Total actions - Idle: {idleActionCount}, Jump: {jumpCount}, Jog: {forwardActionCount}, Sprint: {sprintActionCount}");
+            Debug.Log($"[ParkourAgent] Action received: {currentAction} (0=idle, 1=jump, 2=forward). Total actions - Idle: {idleActionCount}, Jump: {jumpCount}, Forward: {forwardActionCount}");
         }
         
         episodeTimer += Time.fixedDeltaTime;
         
-        // Track action distribution (track original action before blocking)
-        int originalAction = actions.DiscreteActions[0];
-        switch (originalAction)
+        // Track action distribution
+        switch (currentAction)
         {
             case 0: idleActionCount++; break;
             case 1: jumpCount++; break;
             case 2: forwardActionCount++; break;
-            case 3: sprintActionCount++; break;
         }
         
-        // Handle one-time actions (jump) - only if we have stamina
+        // Handle one-time actions (jump)
         if (currentAction == 1 && controller.isGrounded)
         {
             TriggerJump();
         }
         
         // REWARD SHAPING - This is critical
+        CharacterConfig config = CharacterConfigManager.Config;
         
         // 1. Speed reward: forward progress (along X-axis where platforms are)
         float currentX = transform.position.x;
@@ -407,19 +347,18 @@ public class ParkourAgent : Agent
         episodeReward += config.timePenalty;
         
         // 3. Reached target (only if target is assigned)
-        // Use X-axis distance only (not 3D) to avoid issues when agent passes target at different Y height
         if (target != null)
         {
-            float distanceToTargetX = Mathf.Abs(transform.position.x - target.position.x);
+            float distanceToTarget = Vector3.Distance(transform.position, target.position);
             // Debug: Log target position and distance every 50 steps
             if (Time.frameCount % 50 == 0)
             {
-                Debug.Log($"[ParkourAgent] Agent X: {transform.position.x:F1}, Target X: {target.position.x:F1}, Distance X: {distanceToTargetX:F1}");
+                Debug.Log($"[ParkourAgent] Agent X: {transform.position.x:F1}, Target X: {target.position.x:F1}, Distance: {distanceToTarget:F1}");
             }
             
-            if (distanceToTargetX < config.targetReachDistance)
+            if (distanceToTarget < config.targetReachDistance)
             {
-                Debug.Log($"[ParkourAgent] REACHED TARGET! Agent X: {transform.position.x:F2}, Target X: {target.position.x:F2}, Distance X: {distanceToTargetX:F2}");
+                Debug.Log($"[ParkourAgent] REACHED TARGET! Agent: {transform.position}, Target: {target.position}, Distance: {distanceToTarget:F2}");
                 AddReward(config.targetReachReward);
                 episodeReward += config.targetReachReward;
                 LogEpisodeStats("Success");
@@ -470,8 +409,7 @@ public class ParkourAgent : Agent
             if (UnityEngine.Input.inputString != null) // Check if old Input System is available
             {
                 if (UnityEngine.Input.GetKey(KeyCode.Space)) discreteActions[0] = 1; // Jump
-                else if (UnityEngine.Input.GetKey(KeyCode.LeftShift) && UnityEngine.Input.GetKey(KeyCode.W)) discreteActions[0] = 3; // Sprint
-                else if (UnityEngine.Input.GetKey(KeyCode.W)) discreteActions[0] = 2; // Jog
+                if (UnityEngine.Input.GetKey(KeyCode.W)) discreteActions[0] = 2; // Forward
             }
             #endif
         }
@@ -483,21 +421,13 @@ public class ParkourAgent : Agent
     }
     
     /// <summary>
-    /// Triggers a jump if the agent is grounded and has sufficient stamina.
+    /// Triggers a jump if the agent is grounded.
     /// </summary>
     private void TriggerJump()
     {
         if (controller.isGrounded)
         {
-            CharacterConfig config = CharacterConfigManager.Config;
-            // Consume stamina for jump (in physics step, but triggered here)
-            if (currentStamina >= config.jumpStaminaCost)
-            {
-                currentStamina -= config.jumpStaminaCost;
-                currentStamina = Mathf.Max(0f, currentStamina); // Clamp to 0
-                velocity.y = jumpForce;
-            }
-            // If insufficient stamina, jump is blocked (already handled in OnActionReceived)
+            velocity.y = jumpForce;
         }
     }
     
@@ -511,17 +441,15 @@ public class ParkourAgent : Agent
         Academy.Instance.StatsRecorder.Add("Episode/Length", episodeTimer);
         Academy.Instance.StatsRecorder.Add("Episode/MaxDistance", maxDistanceReached);
         Academy.Instance.StatsRecorder.Add("Actions/JumpCount", jumpCount);
-        Academy.Instance.StatsRecorder.Add("Actions/JogCount", forwardActionCount);
-        Academy.Instance.StatsRecorder.Add("Actions/SprintCount", sprintActionCount);
+        Academy.Instance.StatsRecorder.Add("Actions/ForwardCount", forwardActionCount);
         Academy.Instance.StatsRecorder.Add("Actions/IdleCount", idleActionCount);
         
         // Calculate action distribution percentages
-        int totalActions = jumpCount + forwardActionCount + sprintActionCount + idleActionCount;
+        int totalActions = jumpCount + forwardActionCount + idleActionCount;
         if (totalActions > 0)
         {
             Academy.Instance.StatsRecorder.Add("Actions/JumpPercentage", (float)jumpCount / totalActions * 100f);
-            Academy.Instance.StatsRecorder.Add("Actions/JogPercentage", (float)forwardActionCount / totalActions * 100f);
-            Academy.Instance.StatsRecorder.Add("Actions/SprintPercentage", (float)sprintActionCount / totalActions * 100f);
+            Academy.Instance.StatsRecorder.Add("Actions/ForwardPercentage", (float)forwardActionCount / totalActions * 100f);
             Academy.Instance.StatsRecorder.Add("Actions/IdlePercentage", (float)idleActionCount / totalActions * 100f);
         }
     }

@@ -72,15 +72,10 @@ public class AgentAnimationSync : MonoBehaviour
             }
             
             // Ground movement animations
-            if (isMoving && currentAction == 2) // Action 2 = jog forward
+            if (isMoving && currentAction == 2) // Action 2 = run forward
             {
                 animator.SetBool("IsJogging", true);
-                animator.SetBool("IsSprinting", false);
-            }
-            else if (isMoving && currentAction == 3 && agent.IsSprinting) // Action 3 = sprint (only if actually sprinting, i.e., has stamina)
-            {
-                animator.SetBool("IsJogging", false);
-                animator.SetBool("IsSprinting", true);
+                animator.SetBool("IsSprinting", true); // Agent runs forward = sprint
             }
             else
             {

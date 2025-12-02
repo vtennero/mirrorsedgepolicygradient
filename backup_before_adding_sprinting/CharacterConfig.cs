@@ -29,7 +29,7 @@ public class CharacterConfig : ScriptableObject
     
     [Header("=== JUMPING ===")]
     [Tooltip("Vertical jump force applied when jumping (higher = jump higher)")]
-    public float jumpForce = 12f; // Reduced from 16f (25% reduction) - max height: 3.6 units, still feasible for +2.5 unit platforms
+    public float jumpForce = 16f;
     
     [Tooltip("Extra forward/horizontal speed boost when jumping (for longer jumps)")]
     public float jumpForwardBoost = 6f;
@@ -80,20 +80,6 @@ public class CharacterConfig : ScriptableObject
     
     [Tooltip("Maximum animation speed multiplier when sprinting (1.5 = 50% faster)")]
     public float maxSprintAnimationSpeed = 1.5f;
-    
-    
-    [Header("=== STAMINA SYSTEM ===")]
-    [Tooltip("Maximum stamina capacity")]
-    public float maxStamina = 100f;
-    
-    [Tooltip("Stamina consumed per second while sprinting")]
-    public float staminaConsumptionRate = 33.33f; // 100 / 3 seconds to deplete full bar
-    
-    [Tooltip("Stamina consumed per jump")]
-    public float jumpStaminaCost = 5f;
-    
-    [Tooltip("Stamina regenerated per second when not sprinting/jumping")]
-    public float staminaRegenRate = 20f; // Slower than consumption
     
     
     [Header("=== RL AGENT SETTINGS ===")]

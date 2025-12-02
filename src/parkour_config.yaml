@@ -21,10 +21,12 @@ behaviors:
     max_steps: 2000000
     time_horizon: 128  # Balanced: better than 64, faster than 192
     summary_freq: 20000
-    # Test v13: Extended training environment
-    # - Target distance: 300 units (was 105)
-    # - Platform count: 20 (was 8)
-    # - Episode timeout: 90s (was 30s)
-    # - Agent spawn height: 1.25 (fixed to prevent falling through platform)
-    # - Platform height randomization enabled (similar to horizontal gap randomization)
-    # - Heights vary between -1.5 to +2.5 units per platform, within absolute bounds of -0.5 to 5.0 units
+    # Test v20: Sprint action with stamina system
+    # - Action space: 4 actions (0=idle, 1=jump, 2=jog, 3=sprint)
+    # - Observation space: 14 floats (added stamina)
+    # - Stamina: 100 max, 33.33/sec consumption, 5 per jump, 20/sec regen
+    # - Target distance: 300 units
+    # - Platform count: 20
+    # - Episode timeout: 90s
+engine_settings:
+  time_scale: 50  # High timescale for faster training (50x speed)
