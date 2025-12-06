@@ -31,17 +31,17 @@ def save_yaml(data, filepath):
         yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
 def get_training_runs(results_dir):
-    """Get list of all folders in results directory, sorted by modification time (newest first)."""
+    """Get list of folders with 'train' in the name, sorted by modification time (oldest first, newest at bottom)."""
     training_runs = []
     results_path = Path(results_dir)
     
     if not results_path.exists():
         return training_runs
     
-    # Collect all folders with their modification times
+    # Collect folders with 'train' in the name (case-insensitive)
     runs_with_time = []
     for folder in results_path.iterdir():
-        if folder.is_dir():
+        if folder.is_dir() and 'train' in folder.name.lower():
             # Get modification time of the folder
             mtime = folder.stat().st_mtime
             runs_with_time.append((mtime, folder.name))

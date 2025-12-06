@@ -34,16 +34,76 @@ public class InferenceVisualEnhancer : MonoBehaviour
     private bool isInferenceMode = false;
     private GameObject citySkylineContainer;
     
+    void Awake()
+    {
+        // Disable old AnimusWalls IMMEDIATELY (before they run OnEnable)
+        DisableAllAnimusWalls();
+    }
+    
     void Start()
     {
         // Check demo mode first (file-based, doesn't depend on ML-Agents)
         CheckDemoMode();
+        
+        // Initialize stamina bar early if in demo mode
+        if (isDemoMode)
+        {
+            DemoModeStaminaBar.EnsureInitialized();
+        }
         
         // DON'T disable training areas here - wait for inference mode check
         // Training mode needs all areas active, only inference should disable extras
         
         // Check inference mode and enable visuals (may need to wait for ML-Agents to initialize)
         StartCoroutine(CheckAndEnableVisuals());
+    }
+    
+    void DisableAllAnimusWalls()
+    {
+        // Find and disable ALL AnimusWalls immediately (before OnEnable runs)
+        TrainingArea[] allAreas = FindObjectsOfType<TrainingArea>(true);
+        int disabledCount = 0;
+        
+        foreach (TrainingArea area in allAreas)
+        {
+            Transform areaTarget = area.GetTargetTransform();
+            if (areaTarget != null)
+            {
+                Transform existingWall = areaTarget.Find("AnimusWall");
+                if (existingWall != null)
+                {
+                    // DESTROY the old wall completely
+                    Debug.Log($"[InferenceVisualEnhancer] Destroying old AnimusWall at: {existingWall.position}");
+                    #if UNITY_EDITOR
+                    DestroyImmediate(existingWall.gameObject);
+                    #else
+                    Destroy(existingWall.gameObject);
+                    #endif
+                    disabledCount++;
+                }
+            }
+        }
+        
+        // Also search by name (including inactive) and DESTROY them
+        GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj != null && obj.name == "AnimusWall")
+            {
+                Debug.Log($"[InferenceVisualEnhancer] Destroying AnimusWall found at: {obj.transform.position}");
+                #if UNITY_EDITOR
+                DestroyImmediate(obj);
+                #else
+                Destroy(obj);
+                #endif
+                disabledCount++;
+            }
+        }
+        
+        if (disabledCount > 0)
+        {
+            Debug.Log($"[InferenceVisualEnhancer] Disabled {disabledCount} AnimusWall(s) in Awake");
+        }
     }
     
     void CheckDemoMode()
@@ -120,14 +180,11 @@ public class InferenceVisualEnhancer : MonoBehaviour
         
         Debug.Log($"InferenceVisualEnhancer: Demo={isDemoMode}, Inference={isInferenceMode}");
         
-        if (isDemoMode && isInferenceMode)
+        if (isDemoMode)
         {
-            Debug.Log("✓ Enabling visual enhancements for inference mode...");
+            // Enable visuals if demo mode is on (even if inference mode isn't detected)
+            Debug.Log("✓ Enabling visual enhancements for demo mode...");
             EnableVisuals();
-        }
-        else if (isDemoMode && !isInferenceMode)
-        {
-            Debug.LogWarning("⚠ Demo mode is ON but inference mode not detected. Make sure you're running with --inference flag!");
         }
         else
         {
@@ -181,7 +238,7 @@ public class InferenceVisualEnhancer : MonoBehaviour
     
     void EnableVisuals()
     {
-        Debug.Log("InferenceVisualEnhancer: Enabling visual enhancements for demo mode");
+        Debug.Log("InferenceVisualEnhancer: ✓ Enabling visual enhancements for demo mode");
         
         // 1. Handle single agent mode (disable other TrainingAreas)
         if (singleAgentMode)
@@ -197,6 +254,21 @@ public class InferenceVisualEnhancer : MonoBehaviour
         
         // 4. Generate city skyline (only for first TrainingArea)
         GenerateCitySkyline();
+        
+        // 5. Create translucent finish wall at target (only in demo mode)
+        Debug.Log("InferenceVisualEnhancer: Creating finish wall...");
+        CreateFinishWall();
+        
+        // 6. Initialize stamina bar UI (ensures it's created and visible)
+        DemoModeStaminaBar staminaBar = DemoModeStaminaBar.Instance;
+        if (staminaBar != null)
+        {
+            Debug.Log("InferenceVisualEnhancer: ✓ Stamina bar initialized");
+        }
+        else
+        {
+            Debug.LogWarning("InferenceVisualEnhancer: ⚠ Stamina bar instance is null!");
+        }
     }
     
     void DisableExtraTrainingAreas()
@@ -296,7 +368,7 @@ public class InferenceVisualEnhancer : MonoBehaviour
         {
             if (!agent.gameObject.activeInHierarchy) continue;
             
-            // Find or load Faith model
+            // Find or load Faith model (GLB only)
             GameObject faithModel = faithPrefab;
             
             if (faithModel == null)
@@ -507,28 +579,39 @@ public class InferenceVisualEnhancer : MonoBehaviour
         
         Vector3 areaPosition = firstArea.transform.position;
         
-        for (int i = 0; i < buildingCount; i++)
+        // Track is now 3x longer: ~1460 units (20 platforms, 80% are 3x longer)
+        // Generate buildings along the full track length, extending beyond for atmosphere
+        float trackStartX = areaPosition.x - 100f; // Start before track begins
+        float trackEndX = areaPosition.x + 2000f;  // End well beyond track (track ends ~1460, extend to 2000)
+        float trackWidth = 10f;                     // Track corridor width (platforms are 6 units deep, add margin)
+        
+        // Generate more buildings to cover the longer track (increased from default 200 to 600)
+        int actualBuildingCount = buildingCount > 200 ? buildingCount : 600;
+        
+        for (int i = 0; i < actualBuildingCount; i++)
         {
-            // Position buildings around the first TrainingArea
-            Vector3 buildingPos = new Vector3(
-                areaPosition.x + Random.Range(buildingSpawnRange.x, buildingSpawnRange.y),
-                0,
-                areaPosition.z + Random.Range(buildingSpawnRange.x, buildingSpawnRange.y)
-            );
+            // Determine building size first (needed to calculate safe distance)
+            float width = Random.Range(20f, 50f);
+            float depth = Random.Range(20f, 50f);
+            float maxBuildingSize = Mathf.Max(width, depth);
             
-            // Keep buildings away from the parkour path (X axis from area position)
-            if (buildingPos.x > areaPosition.x - 20f && buildingPos.x < areaPosition.x + 320f && 
-                Mathf.Abs(buildingPos.z - areaPosition.z) < 30f)
-            {
-                if (buildingPos.z > areaPosition.z) buildingPos.z += 50f;
-                else buildingPos.z -= 50f;
-            }
+            // Safe distance from track: track width (6 units) + margin (10 units) + half building size
+            float safeDistance = trackWidth + maxBuildingSize * 0.5f + 10f; // At least 30-40 units from track center
+            
+            // Position buildings along the full track length, on BOTH SIDES (never on track)
+            // Choose which side (left or right) randomly
+            float sideZ = Random.value < 0.5f 
+                ? areaPosition.z + Random.Range(-200f, -safeDistance)  // Left side (negative Z)
+                : areaPosition.z + Random.Range(safeDistance, 200f);   // Right side (positive Z)
+            
+            Vector3 buildingPos = new Vector3(
+                Random.Range(trackStartX, trackEndX),
+                0,
+                sideZ // Always on one side, never on track
+            );
             
             // Create building
             GameObject building = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            
-            float width = Random.Range(20f, 50f);
-            float depth = Random.Range(20f, 50f);
             
             // Wave-like height variation
             float waveX = Mathf.Sin(buildingPos.x * 0.01f) * 30f;
@@ -572,7 +655,173 @@ public class InferenceVisualEnhancer : MonoBehaviour
             building.transform.SetParent(citySkylineContainer.transform);
         }
         
-        Debug.Log($"Generated {buildingCount} city buildings around first TrainingArea (no colliders)");
+        Debug.Log($"Generated {actualBuildingCount} city buildings around first TrainingArea (no colliders) covering track from {trackStartX:F0} to {trackEndX:F0}");
+    }
+    
+    void CreateFinishWall()
+    {
+        // Find first active TrainingArea
+        TrainingArea[] allAreas = FindObjectsOfType<TrainingArea>(true);
+        TrainingArea firstArea = null;
+        foreach (TrainingArea area in allAreas)
+        {
+            if (area.gameObject.activeInHierarchy)
+            {
+                firstArea = area;
+                break;
+            }
+        }
+        
+        if (firstArea == null)
+        {
+            Debug.LogWarning("InferenceVisualEnhancer: No active TrainingArea found for finish wall");
+            return;
+        }
+        
+        Transform targetTransform = firstArea.GetTargetTransform();
+        
+        // DESTROY old AnimusWall if it exists (do this here too, in case Awake didn't catch it)
+        if (targetTransform != null)
+        {
+            Transform oldWall = targetTransform.Find("AnimusWall");
+            if (oldWall != null)
+            {
+                Debug.Log($"[InferenceVisualEnhancer] Destroying old AnimusWall in CreateFinishWall at: {oldWall.position}");
+                #if UNITY_EDITOR
+                DestroyImmediate(oldWall.gameObject);
+                #else
+                Destroy(oldWall.gameObject);
+                #endif
+            }
+        }
+        
+        // Get target LOCAL position (same as platforms use)
+        if (targetTransform == null)
+        {
+            Debug.LogWarning($"[InferenceVisualEnhancer] Target transform not found");
+            return;
+        }
+        
+        Vector3 targetLocalPos = targetTransform.localPosition; // Use LOCAL position like platforms
+        Debug.Log($"[InferenceVisualEnhancer] Target local position: {targetLocalPos}");
+        
+        // Create wall EXACTLY like platforms: Cube primitive, local position, parent to TrainingArea
+        GameObject finishWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        finishWall.name = "FinishWall";
+        
+        // Size: reasonable wall dimensions
+        float wallWidth = 1f;   // Thickness (Z depth)
+        float wallHeight = 10f; // Height (Y)
+        float wallDepth = 12f;  // Width (X, perpendicular to track)
+        Vector3 wallSize = new Vector3(wallDepth, wallHeight, wallWidth);
+        
+        // Position: Use LOCAL position like platforms, with bottom at platform level
+        // Platform is at targetLocalPos.y (typically ~1.25)
+        // Wall bottom should be at platform level, so center is at platformY + half height
+        float platformY = targetLocalPos.y;
+        float wallCenterY = platformY + (wallHeight * 0.5f);
+        Vector3 wallLocalPos = new Vector3(targetLocalPos.x, wallCenterY, targetLocalPos.z);
+        
+        // Parent to TrainingArea and set local position/scale (EXACTLY like platforms)
+        finishWall.transform.SetParent(firstArea.transform);
+        finishWall.transform.localPosition = wallLocalPos;
+        finishWall.transform.localRotation = Quaternion.Euler(0, 90, 0); // Face -X (towards agent)
+        finishWall.transform.localScale = wallSize;
+        
+        // Remove collider
+        Collider wallCollider = finishWall.GetComponent<Collider>();
+        if (wallCollider != null)
+        {
+            Destroy(wallCollider);
+        }
+        
+        // Simple material - use existing material from primitive (this worked before!)
+        Renderer renderer = finishWall.GetComponent<Renderer>();
+        Material mat = renderer.material; // Get material instance (this was working!)
+        
+        // Blue-grey Animus color - LOW RED, HIGH BLUE, TRANSLUCENT
+        Color wallColor = new Color(0.2f, 0.4f, 0.7f, 0.4f); // Blue-grey, 40% opacity for translucent Animus look
+        
+        // Check shader type and configure transparency accordingly
+        string shaderName = mat.shader.name;
+        Debug.Log($"[InferenceVisualEnhancer] Material shader: {shaderName}");
+        
+        if (shaderName.Contains("Universal Render Pipeline") || shaderName.Contains("URP"))
+        {
+            // URP Lit shader - use URP-specific transparency settings
+            mat.SetFloat("_Surface", 1); // Transparent
+            mat.SetFloat("_Blend", 0); // Alpha blend
+            mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetFloat("_ZWrite", 0);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.SetColor("_BaseColor", wallColor); // URP uses _BaseColor
+            mat.renderQueue = 3000;
+        }
+        else if (shaderName.Contains("Standard"))
+        {
+            // Standard shader - use Standard transparency settings
+            mat.SetFloat("_Mode", 3); // Transparent
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.color = wallColor; // Standard uses color
+            mat.renderQueue = 3000;
+        }
+        else
+        {
+            // Fallback - just set color
+            mat.color = wallColor;
+        }
+        
+        // Animus-style blue-grey glow (works for both shaders)
+        mat.EnableKeyword("_EMISSION");
+        mat.SetColor("_EmissionColor", new Color(0.15f, 0.35f, 0.6f, 1f) * 2f); // Brighter glow for Animus effect
+        mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+        
+        Debug.Log($"[InferenceVisualEnhancer] ✓ Created finish wall with Animus texture at local position: {wallLocalPos}, size: {wallSize}");
+    }
+    
+    /// <summary>
+    /// Creates a procedural grid texture for Animus-style holographic walls.
+    /// </summary>
+    Texture2D CreateGridTexture(int width, int height, Color baseColor, Color gridColor, int gridSize)
+    {
+        Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        
+        int cellWidth = width / gridSize;
+        int cellHeight = height / gridSize;
+        int lineWidth = Mathf.Max(1, width / 256); // Thin grid lines
+        
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                Color pixelColor = baseColor;
+                
+                // Draw vertical grid lines
+                if (x % cellWidth < lineWidth || x % cellWidth > cellWidth - lineWidth)
+                {
+                    pixelColor = Color.Lerp(pixelColor, gridColor, 0.8f);
+                }
+                
+                // Draw horizontal grid lines
+                if (y % cellHeight < lineWidth || y % cellHeight > cellHeight - lineWidth)
+                {
+                    pixelColor = Color.Lerp(pixelColor, gridColor, 0.8f);
+                }
+                
+                texture.SetPixel(x, y, pixelColor);
+            }
+        }
+        
+        texture.Apply();
+        texture.wrapMode = TextureWrapMode.Repeat;
+        texture.filterMode = FilterMode.Bilinear;
+        
+        return texture;
     }
     
     Color SelectWeightedColor(Color[] colors, float[] weights)
@@ -591,5 +840,6 @@ public class InferenceVisualEnhancer : MonoBehaviour
         
         return colors[0]; // Default
     }
+    
 }
 

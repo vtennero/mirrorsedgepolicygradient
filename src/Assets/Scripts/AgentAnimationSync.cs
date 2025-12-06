@@ -76,11 +76,13 @@ public class AgentAnimationSync : MonoBehaviour
             {
                 animator.SetBool("IsJogging", true);
                 animator.SetBool("IsSprinting", false);
+                
             }
             else if (isMoving && currentAction == 3 && agent.IsSprinting) // Action 3 = sprint (only if actually sprinting, i.e., has stamina)
             {
                 animator.SetBool("IsJogging", false);
                 animator.SetBool("IsSprinting", true);
+                
             }
             else
             {

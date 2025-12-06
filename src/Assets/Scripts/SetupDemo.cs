@@ -255,32 +255,39 @@ public class SetupDemo : MonoBehaviour
             new Color(1.0f, 1.0f, 1.0f, 0.9f)       // Pure white
         };
         
-        // Generate buildings densely around the parkour area
-        int buildingCount = 200;
+        // Track is now 3x longer: ~1460 units (20 platforms, 80% are 3x longer)
+        // Generate buildings along the full track length, extending beyond for atmosphere
+        float trackStartX = -100f; // Start before track begins
+        float trackEndX = 2000f;    // End well beyond track (track ends ~1460, extend to 2000)
+        float trackWidth = 10f;     // Track corridor width (platforms are 6 units deep, add margin)
+        
+        // Generate more buildings to cover the longer track (increased from 200 to 600)
+        int buildingCount = 600;
         
         for (int i = 0; i < buildingCount; i++)
         {
-            // Position buildings around parkour area, avoiding the central path
-            Vector3 buildingPos = new Vector3(
-                Random.Range(-400f, 400f),
-                0,
-                Random.Range(-150f, 150f)
-            );
+            // Determine building size first (needed to calculate safe distance)
+            float width = Random.Range(20f, 50f);
+            float depth = Random.Range(20f, 50f);
+            float maxBuildingSize = Mathf.Max(width, depth);
             
-            // Keep buildings away from the parkour path (X axis from 0 to 300+)
-            if (buildingPos.x > -20f && buildingPos.x < 320f && Mathf.Abs(buildingPos.z) < 30f)
-            {
-                // Move buildings away from the parkour corridor
-                if (buildingPos.z > 0) buildingPos.z += 50f;
-                else buildingPos.z -= 50f;
-            }
+            // Safe distance from track: track width (6 units) + margin (10 units) + half building size
+            float safeDistance = trackWidth + maxBuildingSize * 0.5f + 10f; // At least 30-40 units from track center
+            
+            // Position buildings along the full track length, on BOTH SIDES (never on track)
+            // Choose which side (left or right) randomly
+            float sideZ = Random.value < 0.5f 
+                ? Random.Range(-200f, -safeDistance)  // Left side (negative Z)
+                : Random.Range(safeDistance, 200f); // Right side (positive Z)
+            
+            Vector3 buildingPos = new Vector3(
+                Random.Range(trackStartX, trackEndX),
+                0,
+                sideZ // Always on one side, never on track
+            );
             
             // Create building
             GameObject building = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            
-            // Normal building dimensions (not too wide)
-            float width = Random.Range(20f, 50f);
-            float depth = Random.Range(20f, 50f);
             
             // Wave-like height variation across the map
             float waveX = Mathf.Sin(buildingPos.x * 0.01f) * 30f;

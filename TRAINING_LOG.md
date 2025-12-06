@@ -532,6 +532,22 @@
 
 ---
 
+## Demo Mode Features (2024-12-XX):
+
+### Stamina Bar UI
+- **Location:** Top-left corner of screen (20px from left, 20px from top)
+- **Size:** 400px wide × 30px tall
+- **Behavior:** Shows current stamina percentage with color coding (green >50%, yellow 25-50%, red <25%)
+- **Note:** Low stamina is normal during training - agent actively uses sprint (action 3) which consumes stamina at 33.33/sec. This is expected behavior and indicates the agent is learning to use sprint strategically.
+
+### Finish Wall
+- **Location:** At target position (end of track) in TrainingArea
+- **Appearance:** Translucent light blue wall (60% opacity) with glow effect
+- **Size:** 12 units wide × 8 units tall
+- **Purpose:** Visual indicator of finish line in demo mode
+
+---
+
 ## Next Experiments to Try:
 
 - [ ] Increase platform spacing difficulty gradually (curriculum learning)
