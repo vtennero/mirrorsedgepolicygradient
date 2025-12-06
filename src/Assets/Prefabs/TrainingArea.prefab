@@ -87,10 +87,10 @@ MonoBehaviour:
   platformSize: {x: 12, y: 0.5, z: 6}
   platformHeights: []
   randomizePlatforms: 1
-  gapRange: {x: 2, y: 8}
+  gapRange: {x: 2, y: 4}
   platformWidthRange: {x: 10, y: 14}
   randomizeHeights: 1
-  heightChangeRange: {x: -1.5, y: 2.5}
+  heightChangeRange: {x: -0.5, y: 1.0}
   absoluteHeightRange: {x: -0.5, y: 5}
   randomSeed: 0
 --- !u!1 &7703651773684523594

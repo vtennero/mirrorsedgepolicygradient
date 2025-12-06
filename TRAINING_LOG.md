@@ -326,6 +326,153 @@
 
 ---
 
+## Run: =run28 - EXCELLENT ⭐⭐⭐
+**Date:** 2025-01-06 (estimated from timestamps)
+**Duration:** ~32.8 minutes (2M steps)
+**Agents:** 1
+
+### Configuration:
+**Actions:**
+- 0: Idle
+- 1: Jump
+- 2: Jog
+- 3: Sprint ⚠️ **NEW ACTION**
+
+**Rewards:**
+- Progress: +0.1 per unit forward (X-axis)
+- Grounded: +0.001 per step
+- Time penalty: -0.001 per step
+- Target reach: +10.0
+- Fall: -1.0
+
+**Hyperparameters:**
+- Learning rate: 3e-4 (linear decay)
+- Batch size: 1024
+- Buffer size: 10240
+- Hidden units: 256
+- Num layers: 2
+- Max steps: 2M
+- Time horizon: 128
+- Num epochs: 5
+- **Beta: 0.1 (linear decay)** ⚠️ **6.7x higher than test_v11 (0.015)**
+- Epsilon: 0.2 (linear decay)
+- Lambda: 0.95
+- Gamma: 0.99
+- Time scale: 20x
+
+**Environment:**
+- Platform spacing: RANDOMIZED 2-8 units
+- Platform width: RANDOMIZED 10-14 units
+- Platform count: 8
+- Episode timeout: 30s
+
+**Observations (14 total):**
+- Target relative position (3)
+- Velocity (3)
+- Grounded state (1)
+- Forward obstacle raycast (1)
+- Platform detection raycasts (5)
+- **Stamina (1)** ⚠️ **NEW OBSERVATION**
+
+### Results:
+- **Final Reward:** +78.32 ⭐⭐⭐ **7x HIGHER than test_v11 (+11.15)**
+- **Average Reward:** +74.40 (mean over last 100 summaries)
+- **Max Distance:** 672.69 units (vs test_v11: 114.2 units = **5.9x improvement**)
+- **Episode Length:** 834 steps (vs test_v11: 200 steps = **4.2x longer**)
+- **Policy Entropy:** 0.597 (vs test_v11: 0.035 = **17x higher exploration**)
+
+**Checkpoint Progression:**
+| Steps | Reward | Improvement |
+|-------|--------|-------------|
+| 500k  | 60.27  | Baseline    |
+| 1.0M  | 66.62  | +10.5%      |
+| 1.5M  | 73.80  | +22.4%      |
+| 2.0M  | 78.32  | +30.0%      |
+
+**Action Distribution:**
+- **Jog:** 59.17% (primary movement)
+- **Sprint:** 38.08% (aggressive movement) ⚠️ **NEW**
+- **Jump:** 2.54% (strategic, minimal)
+- **Idle:** 0.21% (excellent efficiency)
+
+**Training Metrics:**
+- **Policy Loss:** 0.025 (stable, low)
+- **Value Loss:** 0.085 (reasonable)
+- **Learning Rate (final):** 7.84e-07 (nearly decayed to zero)
+- **Epsilon (final):** 0.100 (halfway through decay)
+- **Beta (final):** 0.00027 (nearly decayed, started at 0.1)
+
+### Key Observations:
+
+**1. Massive Performance Improvement:**
+- Reward increased **7x** compared to test_v11
+- Distance traveled increased **5.9x**
+- Episodes are **4.2x longer**, suggesting agent reaches much further
+
+**2. Sprinting Strategy:**
+- Agent learned to use sprinting (38% of actions)
+- Balanced approach: 59% jog, 38% sprint, 2.5% jump
+- Very low idle time (0.21%) = excellent efficiency
+
+**3. High Exploration:**
+- Policy entropy (0.597) is **17x higher** than test_v11
+- Beta coefficient (0.1) is **6.7x higher** than test_v11 (0.015)
+- This suggests agent is still exploring, not fully converged
+- **Potential for even better performance with more training?**
+
+**4. Training Stability:**
+- Steady reward progression throughout training
+- No collapse or instability
+- Losses are low and stable
+- Value estimates reasonable (8.07)
+
+### Comparison to Previous Best (test_v11):
+
+| Metric | test_v11 | =run28 | Improvement |
+|--------|----------|--------|-------------|
+| Final Reward | +11.15 | +78.32 | **+603%** |
+| Max Distance | 114.2m | 672.7m | **+489%** |
+| Episode Length | 200 steps | 834 steps | **+317%** |
+| Policy Entropy | 0.035 | 0.597 | +1606% (more exploration) |
+| Beta (initial) | 0.015 | 0.1 | +567% |
+
+### Potential Issues/Questions:
+
+1. **Reward Scale Change?** 
+   - Reward of 78.32 is dramatically higher than previous runs
+   - Could indicate reward structure changed (e.g., different reward per unit distance)
+   - Or environment changed (longer platforms, more targets?)
+
+2. **High Entropy = Not Converged?**
+   - Entropy of 0.597 suggests agent is still exploring
+   - May benefit from more training steps (3M-5M?)
+   - Or reduce beta further to encourage exploitation
+
+3. **Sprinting Implementation:**
+   - Sprinting is new - need to verify it's working as intended
+   - Stamina system may need tuning
+   - Agent uses sprinting 38% of time - is this optimal?
+
+4. **Environment Changes:**
+   - Platform count, spacing, or target distance may have changed
+   - Need to verify environment matches previous runs for fair comparison
+
+### Conclusion:
+**Outstanding results!** This run shows massive improvements over previous best (test_v11). The addition of sprinting and higher exploration (beta=0.1) appears to have unlocked significantly better performance. However, the dramatic reward increase warrants investigation:
+
+1. **Verify reward structure** - ensure rewards are comparable to previous runs
+2. **Test inference performance** - training rewards may not generalize
+3. **Consider more training** - high entropy suggests agent could improve further
+4. **Document environment changes** - sprinting, stamina, platform configs
+
+**Next Steps:**
+- [ ] Run inference test to validate real-world performance
+- [ ] Compare reward structure with test_v11 to ensure fair comparison
+- [ ] Consider training to 3M-5M steps to see if entropy decreases and performance improves
+- [ ] Document exact environment configuration (platform count, spacing, target distance)
+
+---
+
 ## Template for Future Runs:
 
 ```markdown
@@ -365,8 +512,9 @@
 
 ## Quick Reference: Current Best
 
-**Best Training:** test_v11 (+11.15 at 2M steps) ⭐
-**Best Inference:** TBD (test_v11 pending)
+**Best Training:** =run28 (+78.32 at 2M steps) ⭐⭐⭐ **NEW BEST**
+**Previous Best:** test_v11 (+11.15 at 2M steps)
+**Best Inference:** TBD (pending inference test for =run28)
 
 ---
 

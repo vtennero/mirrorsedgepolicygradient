@@ -24,6 +24,7 @@ public class ParkourAgent : Agent
     private float lastProgressZ; // Actually tracks X progress (name kept for compatibility)
     private Vector3 velocity; // For gravity and jumping
     private int currentAction = 0; // Store current action to apply in FixedUpdate
+    private bool justJumped = false; // Track if we just jumped to apply horizontal boost
     
     // Public property for animation sync
     public int CurrentAction => currentAction;
@@ -44,6 +45,31 @@ public class ParkourAgent : Agent
     
     public override void Initialize()
     {
+        // TIMESCALE DEBUG: Log actual time scale at initialization
+        string debugId = System.Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
+        Debug.Log($"[TIMESCALE-DEBUG-{debugId}] ========== PARKOURAGENT INITIALIZE ==========");
+        Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Debug ID: {debugId}");
+        Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Time.timeScale BEFORE: {Time.timeScale}");
+        Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Time.fixedDeltaTime: {Time.fixedDeltaTime}");
+        Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Time.deltaTime: {Time.deltaTime}");
+        
+        // DEMO MODE ONLY: Apply custom time scale for inference/demo viewing
+        // ⚠️ CRITICAL: This ONLY runs in demo mode (MLAGENTS_DEMO_MODE=true)
+        // ⚠️ Training is COMPLETELY UNAFFECTED - this code is skipped during training
+        // ML-Agents doesn't apply engine_settings.time_scale in Editor mode, so we read it manually
+        if (IsDemoMode())
+        {
+            Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Demo mode detected - applying custom time scale");
+            ApplyTimeScaleFromConfig(debugId);
+        }
+        else
+        {
+            Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Training mode - NOT applying custom time scale (training unaffected)");
+        }
+        
+        Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Time.timeScale AFTER: {Time.timeScale}");
+        Debug.Log($"[TIMESCALE-DEBUG-{debugId}] ===========================================");
+        
         // Auto-find CharacterController if not assigned
         if (controller == null)
         {
@@ -67,6 +93,120 @@ public class ParkourAgent : Agent
         lastProgressZ = startPos.x; // Fixed: track X, not Z
     }
     
+    /// <summary>
+    /// Checks if demo mode is enabled (MLAGENTS_DEMO_MODE=true).
+    /// DEMO MODE ONLY - Training is completely unaffected.
+    /// </summary>
+    bool IsDemoMode()
+    {
+        // 1. Check environment variable (if manually set)
+        string demoEnv = System.Environment.GetEnvironmentVariable("MLAGENTS_DEMO_MODE");
+        if (!string.IsNullOrEmpty(demoEnv) && (demoEnv.ToLower() == "true" || demoEnv == "1"))
+        {
+            return true;
+        }
+        
+        // 2. Check demo_mode.env file - try multiple paths
+        string projectRoot = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, ".."));
+        string srcFolder = System.IO.Path.Combine(projectRoot, "src");
+        
+        string[] possiblePaths = {
+            System.IO.Path.Combine(srcFolder, "demo_mode.env"),
+            System.IO.Path.Combine(projectRoot, "demo_mode.env"),
+            System.IO.Path.Combine(Application.dataPath, "..", "src", "demo_mode.env"),
+            System.IO.Path.Combine(Application.dataPath, "..", "demo_mode.env"),
+            System.IO.Path.Combine(Application.streamingAssetsPath, "demo_mode.env")
+        };
+        
+        foreach (string path in possiblePaths)
+        {
+            string normalizedPath = System.IO.Path.GetFullPath(path);
+            if (System.IO.File.Exists(normalizedPath))
+            {
+                try
+                {
+                    string content = System.IO.File.ReadAllText(normalizedPath);
+                    if (content.Contains("MLAGENTS_DEMO_MODE=true") || content.Contains("MLAGENTS_DEMO_MODE=1"))
+                    {
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // Continue checking other paths
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Applies time_scale from config file for DEMO/INFERENCE MODE ONLY.
+    /// ⚠️ CRITICAL: This function is ONLY called when IsDemoMode() returns true.
+    /// ⚠️ Training is COMPLETELY UNAFFECTED - this code never runs during training.
+    /// </summary>
+    void ApplyTimeScaleFromConfig(string debugId)
+    {
+        // METHOD 1: Read from TIMESCALE.txt file (written by Python script before ML-Agents starts)
+        // This file is only created by run_inference.py, which is only used for demo/inference
+        string timescaleFile = System.IO.Path.Combine(Application.dataPath, "..", "TIMESCALE.txt");
+        if (System.IO.File.Exists(timescaleFile))
+        {
+            try
+            {
+                string content = System.IO.File.ReadAllText(timescaleFile).Trim();
+                if (float.TryParse(content, out float timeScaleValue))
+                {
+                    Time.timeScale = timeScaleValue;
+                    Debug.Log($"[TIMESCALE-DEBUG-{debugId}] ✓ Applied time_scale from TIMESCALE.txt: {timeScaleValue} (DEMO MODE ONLY)");
+                    return;
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[TIMESCALE-DEBUG-{debugId}] Could not read TIMESCALE.txt: {e.Message}");
+            }
+        }
+        
+        // METHOD 2: Fallback - read from most recent inference config
+        // Only inference runs create inference_* directories, so this is safe
+        try
+        {
+            string resultsPath = System.IO.Path.Combine(Application.dataPath, "..", "results");
+            if (System.IO.Directory.Exists(resultsPath))
+            {
+                var inferenceDirs = System.IO.Directory.GetDirectories(resultsPath, "inference_*");
+                if (inferenceDirs.Length > 0)
+                {
+                    System.Array.Sort(inferenceDirs, (a, b) => 
+                        System.IO.File.GetLastWriteTime(b).CompareTo(System.IO.File.GetLastWriteTime(a)));
+                    
+                    string latestConfigPath = System.IO.Path.Combine(inferenceDirs[0], "configuration.yaml");
+                    if (System.IO.File.Exists(latestConfigPath))
+                    {
+                        string configContent = System.IO.File.ReadAllText(latestConfigPath);
+                        var timeScaleMatch = System.Text.RegularExpressions.Regex.Match(
+                            configContent, @"time_scale:\s*([0-9.eE+-]+)");
+                        
+                        if (timeScaleMatch.Success && float.TryParse(timeScaleMatch.Groups[1].Value, out float timeScaleValue))
+                        {
+                            Time.timeScale = timeScaleValue;
+                            Debug.Log($"[TIMESCALE-DEBUG-{debugId}] ✓ Applied time_scale from config: {timeScaleValue} (DEMO MODE ONLY)");
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[TIMESCALE-DEBUG-{debugId}] Could not read from results: {e.Message}");
+        }
+        
+        Debug.LogWarning($"[TIMESCALE-DEBUG-{debugId}] ⚠ Using default Time.timeScale: {Time.timeScale} (DEMO MODE - no custom time scale found)");
+    }
+    
     void InitializeFromConfig()
     {
         CharacterConfig config = CharacterConfigManager.Config;
@@ -82,6 +222,9 @@ public class ParkourAgent : Agent
     public override void OnEpisodeBegin()
     {
         Debug.Log($"[ParkourAgent] OnEpisodeBegin called for agent '{name}'");
+        
+        // TIMESCALE DEBUG: Log time scale at episode start
+        Debug.Log($"[TIMESCALE-DEBUG] OnEpisodeBegin - Time.timeScale: {Time.timeScale}, Time.fixedDeltaTime: {Time.fixedDeltaTime}, Time.deltaTime: {Time.deltaTime}");
         
         // Reset training area (regenerate platforms if randomization enabled)
         if (trainingArea != null)
@@ -105,6 +248,7 @@ public class ParkourAgent : Agent
         lastProgressZ = transform.position.x; // Track X position for progress
         startPos = transform.position; // Update startPos to current spawn position
         velocity = Vector3.zero;
+        justJumped = false; // Reset jump flag
         
         // Reset episode metrics
         episodeReward = 0f;
@@ -203,6 +347,12 @@ public class ParkourAgent : Agent
     
     void FixedUpdate()
     {
+        // TIMESCALE DEBUG: Log every 300 frames (every ~6 seconds at 50Hz)
+        if (Time.frameCount % 300 == 0)
+        {
+            Debug.Log($"[TIMESCALE-DEBUG] FixedUpdate Frame {Time.frameCount} - Time.timeScale: {Time.timeScale}, Time.fixedDeltaTime: {Time.fixedDeltaTime}, Time.deltaTime: {Time.deltaTime:F6}, realtimeSinceStartup: {Time.realtimeSinceStartup:F2}");
+        }
+        
         // === STAMINA SYSTEM (in physics step) ===
         CharacterConfig config = CharacterConfigManager.Config;
         
@@ -238,6 +388,14 @@ public class ParkourAgent : Agent
         {
             currentMoveSpeed = config.sprintSpeed;
             horizontalMove = transform.forward * currentMoveSpeed * Time.fixedDeltaTime;
+        }
+        
+        // Apply jump forward boost if we just jumped (for more horizontal, human-like jumps)
+        if (justJumped)
+        {
+            Vector3 jumpBoost = transform.forward * config.jumpForwardBoost * Time.fixedDeltaTime;
+            horizontalMove += jumpBoost;
+            justJumped = false; // Reset flag after applying boost
         }
         
         // Debug: Log when movement action is taken
@@ -496,6 +654,8 @@ public class ParkourAgent : Agent
                 currentStamina -= config.jumpStaminaCost;
                 currentStamina = Mathf.Max(0f, currentStamina); // Clamp to 0
                 velocity.y = jumpForce;
+                // Set flag to apply horizontal boost in FixedUpdate (for more human-like, horizontal jumps)
+                justJumped = true;
             }
             // If insufficient stamina, jump is blocked (already handled in OnActionReceived)
         }

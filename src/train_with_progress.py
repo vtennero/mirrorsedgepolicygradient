@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Wrapper for mlagents-learn that adds completion percentage to training output.
-Usage: python train_with_progress.py <config_file> <other_args>
-Example: python train_with_progress.py parkour_config.yaml --run-id=test_v10 --force
+Automatically generates a run-id based on date/time (format: training_YYYYMMDD_HHMMSS).
+Usage: python train_with_progress.py <config_file> [other_args...]
+Example: python train_with_progress.py parkour_config.yaml --force
 """
 
 import sys
@@ -10,6 +11,7 @@ import subprocess
 import re
 import yaml
 from pathlib import Path
+from datetime import datetime
 
 def get_max_steps(config_file):
     """Extract max_steps from the YAML config file."""
@@ -26,14 +28,30 @@ def get_max_steps(config_file):
         print(f"Warning: Could not read max_steps from config: {e}")
         return None, None
 
+def generate_run_id():
+    """Generate a run-id based on current date and time with 'training' prefix."""
+    now = datetime.now()
+    # Format: training_YYYYMMDD_HHMMSS
+    run_id = f"training_{now.strftime('%Y%m%d_%H%M%S')}"
+    return run_id
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python train_with_progress.py <config_file> [additional args...]")
-        print("Example: python train_with_progress.py parkour_config.yaml --run-id=test_v10 --force")
+        print("Example: python train_with_progress.py parkour_config.yaml --force")
+        print("Note: run-id is automatically generated (format: training_YYYYMMDD_HHMMSS)")
         sys.exit(1)
     
     config_file = sys.argv[1]
     additional_args = sys.argv[2:]
+    
+    # Remove any existing --run-id arguments (user-provided ones will be ignored)
+    additional_args = [arg for arg in additional_args if not arg.startswith('--run-id')]
+    
+    # Always auto-generate run-id
+    run_id = generate_run_id()
+    additional_args.append(f"--run-id={run_id}")
+    print(f"Auto-generated run-id: {run_id}")
     
     # Read max_steps from config
     max_steps, behavior_name = get_max_steps(config_file)

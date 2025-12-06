@@ -16,29 +16,35 @@ public class TrainingArea : MonoBehaviour
     [SerializeField] private bool generatePlatformsOnStart = true;
     [SerializeField] private int platformCount = 20;
     [SerializeField] private float platformSpacing = 15f;
-    [SerializeField] private Vector3 platformSize = new Vector3(12f, 0.5f, 6f);
+    [SerializeField] private Vector3 platformSize = new Vector3(24f, 0.5f, 6f); // Doubled length: 12f → 24f
     [SerializeField] private float[] platformHeights; // Fixed heights for deterministic training
     
     [Header("Randomization (keeps jumps feasible)")]
     [Tooltip("Randomize platform gaps and sizes each episode for better generalization")]
     [SerializeField] private bool randomizePlatforms = true;
-    [Tooltip("Gap between platforms will vary between [min, max] units")]
-    [SerializeField] private Vector2 gapRange = new Vector2(2f, 8f); // Safe range: agent can jump ~19 units
-    [Tooltip("Platform width will vary between [min, max] units")]
-    [SerializeField] private Vector2 platformWidthRange = new Vector2(10f, 14f);
+    [Tooltip("Gap between platforms will vary between [min, max] units (edge-to-edge).")]
+    [SerializeField] private Vector2 gapRange = new Vector2(2f, 4f); // Moderate difficulty: 2-4 units
+    [Tooltip("Platform width will vary between [min, max] units (doubled: was 10-14, now 20-28)")]
+    [SerializeField] private Vector2 platformWidthRange = new Vector2(20f, 28f);
     [Tooltip("Randomize platform heights (vertical position)")]
     [SerializeField] private bool randomizeHeights = true;
-    [Tooltip("Max height difference between consecutive platforms (units). Agent can jump ~6.4 units high.")]
-    [SerializeField] private Vector2 heightChangeRange = new Vector2(-1.5f, 2.5f); // Safe range for varied jumps
+    [Tooltip("Max height difference between consecutive platforms (units).")]
+    [SerializeField] private Vector2 heightChangeRange = new Vector2(-0.5f, 1.0f); // Moderate vertical variation: max 1.0 units up, 0.5 units down
     [Tooltip("Absolute min/max heights to keep platforms within reasonable bounds")]
     [SerializeField] private Vector2 absoluteHeightRange = new Vector2(-0.5f, 5f);
     [Tooltip("Random seed for reproducible training (0 = random each time)")]
     [SerializeField] private int randomSeed = 0;
     
+    [Header("Target Position")]
+    [Tooltip("Offset from end of last platform to target position (in units). Target will be positioned at: lastPlatformEndX + targetOffset")]
+    [SerializeField] private float targetOffset = 5f; // Distance beyond last platform
+    
     private GameObject platformsContainer;
+    private float lastPlatformEndX = 0f; // Track end position of last platform for target calculation
     
     void Start()
     {
+        
         // Validate references
         if (agentSpawnPoint == null)
         {
@@ -111,55 +117,97 @@ public class TrainingArea : MonoBehaviour
         }
         
         // Generate platforms with optional randomization
-        float currentXPosition = 0f;
-        float previousHeight = 0f;
+        // FIRST PRINCIPLES: Track edges, calculate gaps, position platforms
+        
+        float rightEdge = 0f; // Right edge of previous platform
+        float previousRightEdge = 0f; // Track previous right edge for debug
         
         for (int i = 0; i < platformCount && i < platformHeights.Length; i++)
         {
-            // Randomize platform width if enabled
-            float platformWidth = randomizePlatforms 
+            // STEP 1: Calculate this platform's width
+            float baseWidth = randomizePlatforms 
                 ? Random.Range(platformWidthRange.x, platformWidthRange.y) 
                 : platformSize.x;
             
-            Vector3 localPosition = new Vector3(currentXPosition, platformHeights[i], 0f);
+            // 80% chance to make platform 3x longer
+            bool makeLongPlatform = Random.value < 0.8f;
+            float platformWidth = makeLongPlatform ? baseWidth * 3f : baseWidth;
+            
+            // STEP 2: Calculate platform position
+            float platformCenterX;
+            float gap = 0f; // Store gap for debug/validation
+            
+            if (i == 0)
+            {
+                // First platform: center at 0
+                platformCenterX = 0f;
+                rightEdge = platformWidth / 2f; // Right edge = center + half width
+            }
+            else
+            {
+                // STEP 2a: Calculate gap (FIXED edge-to-edge, independent of platform size)
+                gap = randomizePlatforms 
+                    ? Random.Range(gapRange.x, gapRange.y) 
+                    : gapRange.x;
+                
+                // STEP 2b: Calculate left edge = previous right edge + gap
+                float leftEdge = previousRightEdge + gap;
+                
+                // STEP 2c: Calculate center = left edge + half width
+                platformCenterX = leftEdge + (platformWidth / 2f);
+                
+                // STEP 2d: Update right edge for next platform
+                rightEdge = platformCenterX + (platformWidth / 2f);
+                
+                // STEP 3: Verify gap is correct and log it
+                float actualGap = leftEdge - previousRightEdge;
+                Debug.Log($"[TrainingArea] Platform {i}: gap={gap:F2}, actualGap={actualGap:F2}, " +
+                    $"leftEdge={leftEdge:F2}, previousRightEdge={previousRightEdge:F2}, " +
+                    $"platformWidth={platformWidth:F2}, gapRange=[{gapRange.x:F2}, {gapRange.y:F2}]");
+                
+                if (Mathf.Abs(actualGap - gap) > 0.01f)
+                {
+                    Debug.LogError($"[TrainingArea] Gap calculation mismatch! Expected {gap:F2}, got {actualGap:F2}");
+                }
+                
+                // Warn if gap is too large
+                if (gap > 2.5f)
+                {
+                    Debug.LogWarning($"[TrainingArea] WARNING: Gap {gap:F2} is larger than safe range! Platform {i}");
+                }
+            }
+            
+            // Update previous right edge for next iteration (after creating current platform)
+            previousRightEdge = rightEdge;
+            
+            // STEP 4: Create the platform
+            Vector3 localPosition = new Vector3(platformCenterX, platformHeights[i], 0f);
             Vector3 size = new Vector3(platformWidth, platformSize.y, platformSize.z);
             CreatePlatform(i, localPosition, size);
             
-            // Calculate next platform position with randomized gap
-            if (i < platformCount - 1) // Don't calculate gap after last platform
+            // STEP 5: Track last platform end for target position
+            if (i == platformCount - 1)
             {
-                float gap = randomizePlatforms 
-                    ? Random.Range(gapRange.x, gapRange.y) 
-                    : (platformSpacing - platformSize.x);
-                
-                // Next platform starts at: current position + half current width + gap + half next width
-                float nextPlatformWidth = randomizePlatforms 
-                    ? Random.Range(platformWidthRange.x, platformWidthRange.y) 
-                    : platformSize.x;
-                
-                float nextXPosition = currentXPosition + (platformWidth / 2f) + gap + (nextPlatformWidth / 2f);
-                
-                // Validate jump feasibility (editor-only debug check)
-                #if UNITY_EDITOR
-                if (randomizePlatforms && randomizeHeights && i > 0)
-                {
-                    float horizontalDist = nextXPosition - currentXPosition;
-                    float heightDiff = platformHeights[i + 1] - platformHeights[i];
-                    
-                    if (!IsJumpFeasible(horizontalDist, heightDiff))
-                    {
-                        Debug.LogWarning($"Platform {i} -> {i+1}: Potentially difficult jump! " +
-                            $"Gap: {horizontalDist:F1}u, Height diff: {heightDiff:F1}u. " +
-                            $"Agent may struggle with this configuration.");
-                    }
-                }
-                #endif
-                
-                currentXPosition = nextXPosition;
+                lastPlatformEndX = rightEdge;
             }
             
-            previousHeight = platformHeights[i];
+            // STEP 6: Validate jump feasibility
+            #if UNITY_EDITOR
+            if (i > 0 && randomizePlatforms && randomizeHeights)
+            {
+                float heightDiff = platformHeights[i] - platformHeights[i - 1];
+                float jumpDistance = gap + 1f; // Small buffer
+                
+                if (!IsJumpFeasible(jumpDistance, heightDiff))
+                {
+                    Debug.LogWarning($"Platform {i-1} -> {i}: Difficult jump! Gap: {gap:F1}u, Height diff: {heightDiff:F1}u");
+                }
+            }
+            #endif
         }
+        
+        // Update target position based on last platform end position
+        UpdateTargetPosition();
     }
     
     void CreatePlatform(int index, Vector3 localPosition, Vector3 size)
@@ -185,9 +233,10 @@ public class TrainingArea : MonoBehaviour
     bool IsJumpFeasible(float horizontalDist, float heightDiff)
     {
         // Agent physics parameters (from CharacterConfig defaults)
-        float jumpForce = 16f;  // Initial upward velocity
+        float jumpForce = 8f;   // Initial upward velocity (reduced for more horizontal jumps)
         float gravity = -20f;   // Downward acceleration
         float moveSpeed = 6f;   // Horizontal movement speed
+        float jumpForwardBoost = 10f; // Horizontal boost when jumping
         
         // Maximum jump height (at peak of arc): h_max = v² / (2 * |g|)
         float maxJumpHeight = (jumpForce * jumpForce) / (2f * Mathf.Abs(gravity));
@@ -224,7 +273,9 @@ public class TrainingArea : MonoBehaviour
         }
         
         // Calculate maximum horizontal distance achievable in that time
-        float maxHorizontalDist = moveSpeed * timeToTarget;
+        // Include jump forward boost for more accurate calculation
+        float effectiveHorizontalSpeed = moveSpeed + jumpForwardBoost;
+        float maxHorizontalDist = effectiveHorizontalSpeed * timeToTarget;
         
         // Check if horizontal distance is feasible (with 80% safety margin for running jumps)
         return horizontalDist <= maxHorizontalDist * 1.8f; // Agent can build up speed
@@ -258,6 +309,34 @@ public class TrainingArea : MonoBehaviour
     }
     
     /// <summary>
+    /// Gets the target X position (calculated from last platform end + offset).
+    /// This is the single source of truth for target position.
+    /// </summary>
+    public float GetTargetXPosition()
+    {
+        return lastPlatformEndX + targetOffset;
+    }
+    
+    /// <summary>
+    /// Updates target position based on last platform end position.
+    /// Called after platform generation to position target correctly.
+    /// </summary>
+    void UpdateTargetPosition()
+    {
+        if (targetPosition != null)
+        {
+            float targetX = GetTargetXPosition();
+            // Get spawn height for Y position (match agent spawn height)
+            float spawnY = agentSpawnPoint != null ? agentSpawnPoint.position.y : 1.25f;
+            
+            // Update target position (in local space relative to TrainingArea)
+            targetPosition.localPosition = new Vector3(targetX, spawnY, 0f);
+            
+            Debug.Log($"[TrainingArea] Target position updated: X={targetX:F1} (last platform end: {lastPlatformEndX:F1} + offset: {targetOffset:F1})");
+        }
+    }
+    
+    /// <summary>
     /// Optional: Reset any environment state (for advanced training scenarios).
     /// Called by agent at the start of each episode for randomized environments.
     /// </summary>
@@ -281,7 +360,7 @@ public class TrainingArea : MonoBehaviour
             Destroy(platformsContainer);
         }
         
-        // Generate new ones
+        // Generate new ones (this will also update target position)
         GeneratePlatforms();
     }
 }

@@ -28,11 +28,11 @@ public class CharacterConfig : ScriptableObject
     
     
     [Header("=== JUMPING ===")]
-    [Tooltip("Vertical jump force applied when jumping (higher = jump higher)")]
-    public float jumpForce = 12f; // Reduced from 16f (25% reduction) - max height: 3.6 units, still feasible for +2.5 unit platforms
+    [Tooltip("Vertical jump force applied when jumping (higher = jump higher). Reduced for more horizontal, human-like jumps.")]
+    public float jumpForce = 8f; // Reduced from 12f for more horizontal jumps - max height: ~1.6 units
     
-    [Tooltip("Extra forward/horizontal speed boost when jumping (for longer jumps)")]
-    public float jumpForwardBoost = 6f;
+    [Tooltip("Extra forward/horizontal speed boost when jumping (for longer, more horizontal jumps)")]
+    public float jumpForwardBoost = 10f; // Increased from 6f for more horizontal movement
     
     [Tooltip("How fast jump momentum decays in air (air resistance multiplier)")]
     public float jumpMomentumDecayRate = 2f;
@@ -115,8 +115,8 @@ public class CharacterConfig : ScriptableObject
     [Tooltip("Penalty for falling off or timing out")]
     public float fallPenalty = -1f;
     
-    [Tooltip("Maximum episode time in seconds before timeout")]
-    public float episodeTimeout = 90f; // Increased from 30s to match 300-unit target distance (was 105 units)
+    [Tooltip("Maximum episode time in seconds before timeout. Should be sufficient for agent to reach target (calculated dynamically based on platform layout)")]
+    public float episodeTimeout = 90f;
     
     [Tooltip("Raycast distance for obstacle detection (in units)")]
     public float obstacleRaycastDistance = 10f;

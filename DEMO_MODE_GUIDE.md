@@ -1,43 +1,47 @@
 # Demo Mode Guide
 
-## Quick Start
 
-**One-time setup:** Create `src/demo_mode.env` file with:
-```
-MLAGENTS_DEMO_MODE=true
-```
 
-**Run inference:**
+## Running Demo/Inference
+
+Use the wrapper script:
 ```bash
 cd src
-mlagents-learn parkour_config.yaml --run-id=demo --initialize-from=test_v11 --inference
-mlagents-learn parkour_config.yaml --run-id=demo_$(date +%Y-%m-%d_%H-%M-%S) --initialize-from=test_v11 --inference
-
-
+python run_inference.py                    # Default: time-scale=1.0 (normal speed)
+python run_inference.py --time-scale=0.1   # 10x slower
+python run_inference.py --time-scale=0.3   # optimal for demo
+python run_inference.py --time-scale=0.01  # 100x slower
 ```
+
+The script will:
+1. Show list of training runs (select by number)
+2. Auto-generate run ID with timestamp
+3. Create temp config with your time scale
+4. Start ML-Agents inference
 
 Then press **Play** in Unity Editor.
 
-**To disable demo mode:** Delete or rename `demo_mode.env` file.
+## Why TIMESCALE.txt File?
 
-## Unity Setup
+**Problem:** ML-Agents doesn't apply `engine_settings.time_scale` in Unity Editor mode. The config file has the correct value, but Unity ignores it.
 
-1. Open `TrainingScene`
-2. Create empty GameObject → name it `VisualEnhancer`
-3. Add component: `InferenceVisualEnhancer`
+**Solution:** 
+1. Python script writes `TIMESCALE.txt` with the time scale value **before** starting ML-Agents
+2. Unity reads `TIMESCALE.txt` in `ParkourAgent.Initialize()` **only when demo mode is enabled**
+3. Unity applies it to `Time.timeScale` manually
+4. Script cleans up the file after
 
-Optional: Assign `idle.glb` and `MaggieAnimationController.controller` in Inspector (auto-loads if not set).
+**Safety:** This **ONLY** works in demo mode (`MLAGENTS_DEMO_MODE=true`). Training is completely unaffected - the code path is skipped during training.
 
-## What It Does
+## What Demo Mode Does
 
-- Swaps capsule → Faith model
-- Applies Mirror's Edge materials to platforms
-- Generates city skyline (no colliders)
-- Disables extra TrainingAreas (single agent mode)
+- Visual enhancements (Faith model, materials, skyline)
+- Custom time scale for slow-motion viewing
+- Single agent mode (disables extra TrainingAreas)
 
-## Training (No Visuals)
+## Training
 
-Just run normally without the env var:
+Just run normally (demo mode disabled):
 ```bash
 cd src
 mlagents-learn parkour_config.yaml --run-id=training --force --no-graphics --time-scale=50

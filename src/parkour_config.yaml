@@ -21,12 +21,13 @@ behaviors:
     max_steps: 2000000
     time_horizon: 128  # Balanced: better than 64, faster than 192
     summary_freq: 20000
-    # Test v20: Sprint action with stamina system
+    # Test v21: Sprint + longer platforms + dynamic target
     # - Action space: 4 actions (0=idle, 1=jump, 2=jog, 3=sprint)
     # - Observation space: 14 floats (added stamina)
     # - Stamina: 100 max, 33.33/sec consumption, 5 per jump, 20/sec regen
-    # - Target distance: 300 units
+    # - Platform length: 24 units (doubled from 12)
+    # - Target position: Calculated dynamically from last platform + offset
     # - Platform count: 20
     # - Episode timeout: 90s
-engine_settings:
-  time_scale: 50  # High timescale for faster training (50x speed)
+# engine_settings section removed - use run_inference.py wrapper script for inference
+# or pass --time-scale parameter directly for training
