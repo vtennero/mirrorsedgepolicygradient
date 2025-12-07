@@ -8,6 +8,31 @@
 
 ## Change Log
 
+### 2025-01-XX: Increased Platform Gaps (Horizontal and Vertical)
+**Type:** ENVIRONMENT  
+**Status:** ✅ Implemented
+
+**Change:**
+- Increased horizontal gap range: 2-4 units → 2.5-4.5 units (edge-to-edge)
+- Increased vertical height variation: -0.5 to +1.0 units → -0.6 to +1.2 units (smaller increase than horizontal)
+
+**Before:**
+- Horizontal gap range: 2-4 units
+- Vertical height variation: -0.5 to +1.0 units
+
+**After:**
+- Horizontal gap range: 2.5-4.5 units (+0.5 on each side)
+- Vertical height variation: -0.6 to +1.2 units (+0.1 down, +0.2 up)
+
+**Files Modified:**
+- `TrainingArea.prefab`: Updated `gapRange` from `{x: 2, y: 4}` to `{x: 2.5, y: 4.5}`
+- `TrainingArea.prefab`: Updated `heightChangeRange` from `{x: -0.5, y: 1}` to `{x: -0.6, y: 1.2}`
+- `TrainingArea.cs`: Updated code defaults to match
+
+**Rationale:** Slightly increased platform gaps to provide more challenge while maintaining feasibility. Horizontal gaps increased more than vertical to maintain jump feasibility (agent can jump ~5 units horizontally, ~1.6 units vertically).
+
+---
+
 ### 2025-12-06: Adjusted Platform Gaps and Vertical Variation for Difficulty
 **Type:** ENVIRONMENT  
 **Status:** ✅ Implemented

@@ -588,6 +588,15 @@ public class ParkourAgent : Agent
                     DemoModeScreenFlash.Instance.FlashGreen();
                 }
                 
+                // Notify menu in demo mode before ending episode
+                if (IsDemoMode() && DemoModeRunCompleteMenu.Instance != null)
+                {
+                    DemoModeRunCompleteMenu.Instance.OnEpisodeComplete(
+                        this, "Success", episodeReward, episodeTimer, maxDistanceReached,
+                        jumpCount, forwardActionCount, sprintActionCount, idleActionCount
+                    );
+                }
+                
                 EndEpisode();
             }
         }
@@ -598,15 +607,25 @@ public class ParkourAgent : Agent
         if (fell || timedOut)
         {
             string reason = fell ? $"Fell (y={transform.position.y:F2} < {config.fallThreshold})" : $"Timeout (t={episodeTimer:F2} > {config.episodeTimeout})";
+            string endReason = fell ? "Fell" : "Timeout";
             Debug.LogError($"[ParkourAgent] Episode ending: {reason}. Agent pos: {transform.position}, Timer: {episodeTimer:F2}s, Grounded: {controller.isGrounded}");
             AddReward(config.fallPenalty);
             episodeReward += config.fallPenalty;
-            LogEpisodeStats(fell ? "Fell" : "Timeout");
+            LogEpisodeStats(endReason);
             
             // Flash red screen in demo mode
             if (DemoModeScreenFlash.Instance != null)
             {
                 DemoModeScreenFlash.Instance.FlashRed();
+            }
+            
+            // Notify menu in demo mode before ending episode
+            if (IsDemoMode() && DemoModeRunCompleteMenu.Instance != null)
+            {
+                DemoModeRunCompleteMenu.Instance.OnEpisodeComplete(
+                    this, endReason, episodeReward, episodeTimer, maxDistanceReached,
+                    jumpCount, forwardActionCount, sprintActionCount, idleActionCount
+                );
             }
             
             EndEpisode();

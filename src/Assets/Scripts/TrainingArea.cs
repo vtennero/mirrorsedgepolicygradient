@@ -23,13 +23,13 @@ public class TrainingArea : MonoBehaviour
     [Tooltip("Randomize platform gaps and sizes each episode for better generalization")]
     [SerializeField] private bool randomizePlatforms = true;
     [Tooltip("Gap between platforms will vary between [min, max] units (edge-to-edge).")]
-    [SerializeField] private Vector2 gapRange = new Vector2(2f, 4f); // Moderate difficulty: 2-4 units
+    [SerializeField] private Vector2 gapRange = new Vector2(2.5f, 4.5f); // Increased horizontal gaps: 2.5-4.5 units
     [Tooltip("Platform width will vary between [min, max] units (doubled: was 10-14, now 20-28)")]
     [SerializeField] private Vector2 platformWidthRange = new Vector2(20f, 28f);
     [Tooltip("Randomize platform heights (vertical position)")]
     [SerializeField] private bool randomizeHeights = true;
     [Tooltip("Max height difference between consecutive platforms (units).")]
-    [SerializeField] private Vector2 heightChangeRange = new Vector2(-0.5f, 1.0f); // Moderate vertical variation: max 1.0 units up, 0.5 units down
+    [SerializeField] private Vector2 heightChangeRange = new Vector2(-0.6f, 1.2f); // Slightly increased vertical variation: max 1.2 units up, 0.6 units down
     [Tooltip("Absolute min/max heights to keep platforms within reasonable bounds")]
     [SerializeField] private Vector2 absoluteHeightRange = new Vector2(-0.5f, 5f);
     [Tooltip("Random seed for reproducible training (0 = random each time)")]

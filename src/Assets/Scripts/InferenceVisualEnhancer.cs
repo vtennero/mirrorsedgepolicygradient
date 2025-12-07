@@ -92,7 +92,7 @@ public class InferenceVisualEnhancer : MonoBehaviour
             {
                 Debug.Log($"[InferenceVisualEnhancer] Destroying AnimusWall found at: {obj.transform.position}");
                 #if UNITY_EDITOR
-                DestroyImmediate(obj);
+                DestroyImmediate(obj, true); // Allow destroying assets
                 #else
                 Destroy(obj);
                 #endif
