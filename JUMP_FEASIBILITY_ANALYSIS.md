@@ -114,3 +114,4 @@ if (distanceToTargetX < config.targetReachDistance) // 2.0 units
 - ❌ Cannot reach +2.5 unit platforms
 - ❌ Too restrictive
 
+

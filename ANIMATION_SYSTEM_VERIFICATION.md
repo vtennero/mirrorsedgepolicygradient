@@ -100,3 +100,4 @@ src/Assets/Characters/glb/faith/
 - System gracefully falls back to GLB if FBX fails
 - No commented code - everything is active and working
 
+
