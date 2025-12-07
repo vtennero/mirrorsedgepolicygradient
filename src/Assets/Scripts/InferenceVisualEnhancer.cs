@@ -478,17 +478,19 @@ public class InferenceVisualEnhancer : MonoBehaviour
     
     void EnhancePlatforms()
     {
-        // Mirror's Edge color palette (from SetupDemo)
+        // Mirror's Edge color palette (original)
         Color[] mirrorEdgeColors = {
             new Color(0.9f, 0.9f, 0.9f, 1.0f),       // Clean white/light gray
             new Color(1.0f, 1.0f, 1.0f, 1.0f),       // Pure white 
             new Color(0.8f, 0.1f, 0.1f, 1.0f),       // Deep red
-            new Color(0.2f, 0.2f, 0.2f, 1.0f),       // Dark surfaces
+            new Color(0.2f, 0.2f, 0.2f, 1.0f),       // Dark surfaces (black)
             new Color(0.7f, 0.7f, 0.7f, 1.0f),       // Medium gray
-            new Color(0.1f, 0.6f, 0.9f, 1.0f)        // Bright blue
+            new Color(0.1f, 0.6f, 0.9f, 1.0f),        // Bright blue
+            new Color(0.9f, 0.5f, 0.1f, 1.0f)         // Orange
         };
         
-        float[] colorWeights = { 0.5f, 0.3f, 0.1f, 0.05f, 0.04f, 0.01f };
+        // Original Mirror's Edge weights
+        float[] colorWeights = { 0.5f, 0.3f, 0.1f, 0.05f, 0.04f, 0.01f, 0.0f };
         
         // Find all platform GameObjects - search through TrainingAreas
         int enhancedCount = 0;
@@ -515,19 +517,33 @@ public class InferenceVisualEnhancer : MonoBehaviour
                         // Apply Mirror's Edge material properties
                         Color selectedColor = SelectWeightedColor(mirrorEdgeColors, colorWeights);
                         mat.color = selectedColor;
-                        mat.SetFloat("_Metallic", 0.05f);
-                        mat.SetFloat("_Smoothness", 0.9f);
+                        
+                        // Base material properties for all platforms
+                        mat.SetFloat("_Metallic", 0.1f);
+                        mat.SetFloat("_Smoothness", 0.8f);
                         mat.SetFloat("_SpecularHighlights", 1.0f);
-                        mat.SetFloat("_GlossyReflections", 0.8f);
+                        mat.SetFloat("_GlossyReflections", 0.7f);
                         
                         mat.EnableKeyword("_NORMALMAP");
                         mat.EnableKeyword("_METALLICGLOSSMAP");
                         
-                        // Special red platforms get emission
-                        if (selectedColor.r > 0.7f && selectedColor.g < 0.3f && selectedColor.b < 0.3f)
+                        // Only make red, orange, and black platforms shiny with emission
+                        bool isRed = selectedColor.r > 0.7f && selectedColor.g < 0.3f && selectedColor.b < 0.3f;
+                        bool isOrange = selectedColor.r > 0.7f && selectedColor.g > 0.4f && selectedColor.g < 0.6f && selectedColor.b < 0.2f;
+                        bool isBlack = selectedColor.r < 0.3f && selectedColor.g < 0.3f && selectedColor.b < 0.3f;
+                        
+                        if (isRed || isOrange || isBlack)
                         {
+                            // Make shiny: higher metallic and smoothness
+                            mat.SetFloat("_Metallic", 0.2f);
+                            mat.SetFloat("_Smoothness", 0.95f);
+                            mat.SetFloat("_GlossyReflections", 0.9f);
+                            
+                            // Add emission glow
                             mat.EnableKeyword("_EMISSION");
-                            mat.SetColor("_EmissionColor", selectedColor * 0.15f);
+                            float emissionStrength = isBlack ? 0.1f : 0.2f; // Subtle glow for black, stronger for red/orange
+                            mat.SetColor("_EmissionColor", selectedColor * emissionStrength);
+                            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
                         }
                         
                         enhancedCount++;

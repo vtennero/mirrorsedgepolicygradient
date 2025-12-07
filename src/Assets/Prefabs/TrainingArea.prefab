@@ -84,7 +84,7 @@ MonoBehaviour:
   generatePlatformsOnStart: 1
   platformCount: 20
   platformSpacing: 15
-  platformSize: {x: 12, y: 0.5, z: 6}
+  platformSize: {x: 12, y: 10, z: 6}
   platformHeights: []
   randomizePlatforms: 1
   gapRange: {x: 2.5, y: 4.5}

@@ -16,7 +16,7 @@ public class TrainingArea : MonoBehaviour
     [SerializeField] private bool generatePlatformsOnStart = true;
     [SerializeField] private int platformCount = 20;
     [SerializeField] private float platformSpacing = 15f;
-    [SerializeField] private Vector3 platformSize = new Vector3(24f, 0.5f, 6f); // Doubled length: 12f → 24f
+    [SerializeField] private Vector3 platformSize = new Vector3(24f, 10f, 6f); // Height increased: 0.5f → 10f (buildings)
     [SerializeField] private float[] platformHeights; // Fixed heights for deterministic training
     
     [Header("Randomization (keeps jumps feasible)")]
@@ -181,8 +181,14 @@ public class TrainingArea : MonoBehaviour
             previousRightEdge = rightEdge;
             
             // STEP 4: Create the platform
-            Vector3 localPosition = new Vector3(platformCenterX, platformHeights[i], 0f);
-            Vector3 size = new Vector3(platformWidth, platformSize.y, platformSize.z);
+            // Position platform so top surface is at platformHeights[i] (expand downward)
+            // If platform height is H, and we want top at Y, then center should be at Y - H/2
+            float platformHeight = platformSize.y;
+            float platformTopY = platformHeights[i]; // Top surface should be at this Y
+            float platformCenterY = platformTopY - (platformHeight / 2f); // Center is half height below top
+            
+            Vector3 localPosition = new Vector3(platformCenterX, platformCenterY, 0f);
+            Vector3 size = new Vector3(platformWidth, platformHeight, platformSize.z);
             CreatePlatform(i, localPosition, size);
             
             // STEP 5: Track last platform end for target position
