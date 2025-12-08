@@ -39,6 +39,7 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
     
     // Audio
     private AudioSource audioSource;
+    private System.Random audioRandom; // Separate random instance for audio (not affected by Unity's Random state)
     
     // Stats from last run
     private string lastEndReason = "";
@@ -49,6 +50,8 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
     private int lastForwardCount = 0;
     private int lastSprintCount = 0;
     private int lastIdleCount = 0;
+    private int lastRollCount = 0;
+    private float lastRollPercent = 0f; // Roll percentage for style audio threshold
     
     public static DemoModeRunCompleteMenu Instance
     {
@@ -243,6 +246,9 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         audioSource.spatialBlend = 0f; // 2D sound (not 3D)
         audioSource.loop = false;
         
+        // Initialize separate random instance for audio (ensures true randomness, not affected by Unity's Random state)
+        audioRandom = new System.Random(System.Environment.TickCount);
+        
         // Ensure GameObject is active (needed for AudioSource to work)
         if (!gameObject.activeSelf)
         {
@@ -262,7 +268,7 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
     /// Called by ParkourAgent when episode ends in demo mode.
     /// </summary>
     public void OnEpisodeComplete(ParkourAgent agent, string endReason, float episodeReward, float episodeTime, 
-        float maxDistance, int jumpCount, int forwardCount, int sprintCount, int idleCount)
+        float maxDistance, int jumpCount, int forwardCount, int sprintCount, int idleCount, int rollCount)
     {
         if (!isDemoMode)
         {
@@ -279,6 +285,7 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         lastForwardCount = forwardCount;
         lastSprintCount = sprintCount;
         lastIdleCount = idleCount;
+        lastRollCount = rollCount;
         
         // Find DecisionRequester to pause
         decisionRequester = agent.GetComponent<DecisionRequester>();
@@ -335,8 +342,10 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         // Update menu text
         UpdateMenuText();
         
-        // Play audio based on result (start loading in background)
-        StartCoroutine(PlayResultAudioCoroutine(lastEndReason == "Success"));
+        // Play audio based on result and style threshold (start loading in background)
+        bool isSuccess = lastEndReason == "Success";
+        bool hasStyle = lastRollPercent >= 2.0f; // 2% roll threshold for style audio
+        StartCoroutine(PlayResultAudioCoroutine(isSuccess, hasStyle));
         
         // Show menu (fade in)
         menuPanel.SetActive(true);
@@ -375,18 +384,26 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         stats += $"Actions:\n";
         
         // Calculate percentages
-        int totalActions = lastJumpCount + lastForwardCount + lastSprintCount + lastIdleCount;
+        int totalActions = lastJumpCount + lastForwardCount + lastSprintCount + lastIdleCount + lastRollCount;
         if (totalActions > 0)
         {
             float jumpPercent = (float)lastJumpCount / totalActions * 100f;
             float forwardPercent = (float)lastForwardCount / totalActions * 100f;
             float sprintPercent = (float)lastSprintCount / totalActions * 100f;
+            lastRollPercent = (float)lastRollCount / totalActions * 100f; // Store for audio threshold check
             float idlePercent = (float)lastIdleCount / totalActions * 100f;
             
             stats += $"  Jumps: {jumpPercent:F1}%\n";
             stats += $"  Forward: {forwardPercent:F1}%\n";
             stats += $"  Sprint: {sprintPercent:F1}%\n";
-            stats += $"  Idle: {idlePercent:F1}%";
+            stats += $"  Roll: {lastRollPercent:F1}%\n"; // Roll percentage display
+            stats += $"  Idle: {idlePercent:F1}%\n\n";
+            
+            // Add style indicator if roll percentage is significant
+            if (lastRollPercent >= 2.0f)
+            {
+                stats += $"Style: {lastRollPercent:F1}% rolls ✨";
+            }
         }
         else
         {
@@ -520,9 +537,10 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
     }
     
     /// <summary>
-    /// Plays a random audio file based on success/failure result.
+    /// Plays a random audio file based on success/failure result and style threshold.
+    /// Uses "successstyle" or "fellstyle" if roll percentage >= 2%, otherwise uses regular "success" or "fell".
     /// </summary>
-    IEnumerator PlayResultAudioCoroutine(bool isSuccess)
+    IEnumerator PlayResultAudioCoroutine(bool isSuccess, bool hasStyle)
     {
         if (audioSource == null)
         {
@@ -530,9 +548,40 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             yield break;
         }
         
-        string prefix = isSuccess ? "success" : "fell";
-        int randomNum = Random.Range(1, 7); // 1-6
-        string fileName = $"{prefix}{randomNum:D2}.mp3"; // success01.mp3, fell02.mp3, etc.
+        string prefix;
+        int randomNum;
+        
+        // Use style audio if roll percentage >= 2%, otherwise use regular audio
+        if (hasStyle)
+        {
+            if (isSuccess)
+            {
+                prefix = "successstyle";
+                randomNum = audioRandom.Next(1, 7); // 1-6 (inclusive min, exclusive max)
+            }
+            else
+            {
+                prefix = "fellstyle";
+                randomNum = audioRandom.Next(1, 4); // 1-3 (fellstyle01-03, inclusive min, exclusive max)
+            }
+        }
+        else
+        {
+            if (isSuccess)
+            {
+                prefix = "success";
+                randomNum = audioRandom.Next(1, 7); // 1-6 (inclusive min, exclusive max)
+            }
+            else
+            {
+                prefix = "fell";
+                randomNum = audioRandom.Next(1, 7); // 1-6 (inclusive min, exclusive max)
+            }
+        }
+        
+        string fileName = $"{prefix}{randomNum:D2}.mp3"; // success01.mp3, successstyle01.mp3, fellstyle01.mp3, etc.
+        
+        Debug.Log($"[DemoModeRunCompleteMenu] Playing audio: {fileName} (roll%: {lastRollPercent:F1}%, hasStyle: {hasStyle}, isSuccess: {isSuccess}, randomNum: {randomNum})");
         
         yield return StartCoroutine(LoadAndPlayAudio(fileName));
     }

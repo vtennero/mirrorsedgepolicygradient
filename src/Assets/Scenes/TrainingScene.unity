@@ -949,6 +949,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+--- !u!1 &1040378817 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8639784839225256488, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+  m_PrefabInstance: {fileID: 6209791728788788707}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1223886558
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1308,6 +1313,44 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2627335320194099158, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
   m_PrefabInstance: {fileID: 6209791728788788707}
   m_PrefabAsset: {fileID: 0}
+--- !u!95 &1782929368
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040378817}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 0}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!111 &1782929369
+Animation:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040378817}
+  m_Enabled: 1
+  serializedVersion: 4
+  m_Animation: {fileID: 0}
+  m_Animations: []
+  m_WrapMode: 0
+  m_PlayAutomatically: 1
+  m_AnimatePhysics: 0
+  m_UpdateMode: 0
+  m_CullingType: 0
 --- !u!1001 &1851960481
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1478,6 +1521,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6761261980722720905, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+      propertyPath: m_BehaviorType
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6852617268849284071, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
       propertyPath: m_Name
       value: TrainingArea
@@ -1490,7 +1537,13 @@ PrefabInstance:
     m_RemovedGameObjects:
     - {fileID: 7703651773684523594, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8639784839225256488, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1782929369}
+    - targetCorrespondingSourceObject: {fileID: 8639784839225256488, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1782929368}
   m_SourcePrefab: {fileID: 100100000, guid: ca0f0fdce23af5849be1d22dd70e15ef, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

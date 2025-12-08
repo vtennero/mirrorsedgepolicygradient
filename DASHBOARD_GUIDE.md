@@ -2,8 +2,10 @@
 
 ## 🚀 Dashboard is Live!
 
-**Access it at: http://localhost:5000**
+Access it at:
+http://localhost:5000
 tensorboard --logdir=results
+http://localhost:6006/
 
 The dashboard is currently running in the background and will auto-refresh every 30 seconds.
 

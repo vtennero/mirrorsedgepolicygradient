@@ -297,13 +297,13 @@
                     </div>
                     <div class="col-lg-6">
                         <div class="chart-container" style="background: #fff3cd;">
-                            <h5 title="Policy Loss - should trend down over time. Lower is better (but not too close to zero)">🔴 Policy Loss (CRITICAL)</h5>
+                            <h5 title="Policy Loss - should trend down over time. Lower is better (but not too close to zero)">Policy Loss</h5>
                             <canvas id="policyLossChart"></canvas>
                         </div>
                     </div>
                     <div class="col-lg-6">
                         <div class="chart-container" style="background: #fff3cd;">
-                            <h5 title="Value Loss - measures value function accuracy. Should decrease and stabilize">🔴 Value Loss (CRITICAL)</h5>
+                            <h5 title="Value Loss - measures value function accuracy. Should decrease and stabilize">Value Loss</h5>
                             <canvas id="valueLossChart"></canvas>
                         </div>
                     </div>
@@ -334,8 +334,8 @@
                                     <th title="Average total reward per episode - main performance indicator">Avg Reward</th>
                                     <th title="Best average reward achieved during this run">Max Reward</th>
                                     <th title="Average steps per episode">Episode Length</th>
-                                    <th title="Shows if policy is learning. Should decrease over time." style="background: #fff3cd;">Policy Loss 🔴</th>
-                                    <th title="Measures value function accuracy. Should be low and stable." style="background: #fff3cd;">Value Loss 🔴</th>
+                                    <th title="Shows if policy is learning. Should decrease over time." style="background: #fff3cd;">Policy Loss</th>
+                                    <th title="Measures value function accuracy. Should be low and stable." style="background: #fff3cd;">Value Loss</th>
                                     <th title="Total training/inference steps completed">Total Steps</th>
                                     <th title="How long the run took from start to finish">Duration (min)</th>
                                 </tr>
@@ -541,11 +541,11 @@
 
                 ${km.policy_loss != null || km.value_loss != null ? `
                 <div class="details-section" style="background: #fff3cd; border-left: 4px solid #ffc107;">
-                    <h6><i class="bi bi-activity"></i> PPO Training Metrics (CRITICAL)</h6>
+                    <h6><i class="bi bi-activity"></i> PPO Training Metrics</h6>
                     <div class="row">
                         <div class="col-md-4 mb-2">
                             <strong title="Shows if your policy is actually learning. Should decrease over time (trend down, not necessarily monotonic). Sudden spikes = instability. Flatline near zero = dead policy, not learning anymore. If this stops decreasing, your learning has plateaued.">
-                                <span class="tooltip-text">Policy Loss: 🔴 CRITICAL</span>
+                                <span class="tooltip-text">Policy Loss:</span>
                             </strong><br>
                             Current: ${km.policy_loss?.toFixed(6) || 'N/A'}<br>
                             Range: ${km.policy_loss_min?.toFixed(6) || 'N/A'} - ${km.policy_loss_max?.toFixed(6) || 'N/A'}
@@ -557,7 +557,7 @@
                         </div>
                         <div class="col-md-4 mb-2">
                             <strong title="Measures how well your value function estimates future rewards. Bad value function = bad advantage estimates = bad policy updates. Should decrease and stabilize. High value loss means your advantage estimation is broken, which could explain stuck performance.">
-                                <span class="tooltip-text">Value Loss: 🔴 CRITICAL</span>
+                                <span class="tooltip-text">Value Loss:</span>
                             </strong><br>
                             Current: ${km.value_loss?.toFixed(6) || 'N/A'}<br>
                             Range: ${km.value_loss_min?.toFixed(6) || 'N/A'} - ${km.value_loss_max?.toFixed(6) || 'N/A'}

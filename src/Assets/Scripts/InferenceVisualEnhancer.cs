@@ -674,6 +674,19 @@ public class InferenceVisualEnhancer : MonoBehaviour
         Debug.Log($"Generated {actualBuildingCount} city buildings around first TrainingArea (no colliders) covering track from {trackStartX:F0} to {trackEndX:F0}");
     }
     
+    /// <summary>
+    /// Creates or updates the finish wall to match the current target position.
+    /// Should be called after target position is updated (e.g., after OnEpisodeBegin).
+    /// </summary>
+    public void UpdateFinishWall()
+    {
+        if (!isDemoMode)
+        {
+            return; // Only update wall in demo mode
+        }
+        CreateFinishWall();
+    }
+    
     void CreateFinishWall()
     {
         // Find first active TrainingArea
@@ -696,13 +709,17 @@ public class InferenceVisualEnhancer : MonoBehaviour
         
         Transform targetTransform = firstArea.GetTargetTransform();
         
-        // DESTROY old AnimusWall if it exists (do this here too, in case Awake didn't catch it)
+        // DESTROY old FinishWall or AnimusWall if it exists
         if (targetTransform != null)
         {
-            Transform oldWall = targetTransform.Find("AnimusWall");
+            Transform oldWall = targetTransform.Find("FinishWall");
+            if (oldWall == null)
+            {
+                oldWall = targetTransform.Find("AnimusWall");
+            }
             if (oldWall != null)
             {
-                Debug.Log($"[InferenceVisualEnhancer] Destroying old AnimusWall in CreateFinishWall at: {oldWall.position}");
+                Debug.Log($"[InferenceVisualEnhancer] Destroying old wall in CreateFinishWall at: {oldWall.position}");
                 #if UNITY_EDITOR
                 DestroyImmediate(oldWall.gameObject);
                 #else
@@ -711,15 +728,34 @@ public class InferenceVisualEnhancer : MonoBehaviour
             }
         }
         
-        // Get target LOCAL position (same as platforms use)
+        // Also search for wall in TrainingArea children (in case it's parented there)
+        Transform wallInArea = firstArea.transform.Find("FinishWall");
+        if (wallInArea == null)
+        {
+            wallInArea = firstArea.transform.Find("AnimusWall");
+        }
+        if (wallInArea != null)
+        {
+            Debug.Log($"[InferenceVisualEnhancer] Destroying old wall in TrainingArea at: {wallInArea.position}");
+            #if UNITY_EDITOR
+            DestroyImmediate(wallInArea.gameObject);
+            #else
+            Destroy(wallInArea.gameObject);
+            #endif
+        }
+        
+        // Get target WORLD position - MUST use current world position, not local (platforms can change)
         if (targetTransform == null)
         {
             Debug.LogWarning($"[InferenceVisualEnhancer] Target transform not found");
             return;
         }
         
-        Vector3 targetLocalPos = targetTransform.localPosition; // Use LOCAL position like platforms
-        Debug.Log($"[InferenceVisualEnhancer] Target local position: {targetLocalPos}");
+        // CRITICAL: Use target's WORLD position to ensure wall is exactly where target is
+        // Convert to local space relative to TrainingArea for parenting
+        Vector3 targetWorldPos = targetTransform.position;
+        Vector3 targetLocalPos = firstArea.transform.InverseTransformPoint(targetWorldPos);
+        Debug.Log($"[InferenceVisualEnhancer] Target world position: {targetWorldPos}, Target local position: {targetLocalPos}");
         
         // Create wall EXACTLY like platforms: Cube primitive, local position, parent to TrainingArea
         GameObject finishWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -731,11 +767,9 @@ public class InferenceVisualEnhancer : MonoBehaviour
         float wallDepth = 12f;  // Width (X, perpendicular to track)
         Vector3 wallSize = new Vector3(wallDepth, wallHeight, wallWidth);
         
-        // Position: Use LOCAL position like platforms, with bottom at platform level
-        // Platform is at targetLocalPos.y (typically ~1.25)
-        // Wall bottom should be at platform level, so center is at platformY + half height
-        float platformY = targetLocalPos.y;
-        float wallCenterY = platformY + (wallHeight * 0.5f);
+        // Position: Wall MUST be at target's X position exactly (no negotiation)
+        // Wall center Y is at target Y + half wall height (wall bottom at target Y level)
+        float wallCenterY = targetLocalPos.y + (wallHeight * 0.5f);
         Vector3 wallLocalPos = new Vector3(targetLocalPos.x, wallCenterY, targetLocalPos.z);
         
         // Parent to TrainingArea and set local position/scale (EXACTLY like platforms)
@@ -797,7 +831,16 @@ public class InferenceVisualEnhancer : MonoBehaviour
         mat.SetColor("_EmissionColor", new Color(0.15f, 0.35f, 0.6f, 1f) * 2f); // Brighter glow for Animus effect
         mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
         
-        Debug.Log($"[InferenceVisualEnhancer] ✓ Created finish wall with Animus texture at local position: {wallLocalPos}, size: {wallSize}");
+        // Verify wall is exactly at target X position
+        Vector3 wallWorldPos = finishWall.transform.position;
+        float wallTargetXDiff = Mathf.Abs(wallWorldPos.x - targetWorldPos.x);
+        Debug.Log($"[InferenceVisualEnhancer] ✓ Created finish wall at local position: {wallLocalPos}, world position: {wallWorldPos}, size: {wallSize}");
+        Debug.Log($"[InferenceVisualEnhancer] Wall X position verification: Target X={targetWorldPos.x:F3}, Wall X={wallWorldPos.x:F3}, Difference={wallTargetXDiff:F6} (should be < 0.001)");
+        
+        if (wallTargetXDiff > 0.001f)
+        {
+            Debug.LogError($"[InferenceVisualEnhancer] ⚠ WARNING: Wall X position mismatch! Target X={targetWorldPos.x:F3}, Wall X={wallWorldPos.x:F3}, Difference={wallTargetXDiff:F3}");
+        }
     }
     
     /// <summary>

@@ -18,6 +18,7 @@ public class AgentAnimationSync : MonoBehaviour
     private bool isJumping = false;
     private float jumpStartTime = 0f;
     private const float JUMP_START_DURATION = 0.2f; // Time before transitioning to jump loop
+    private bool wasRolling = false;
     
     void Start()
     {
@@ -72,29 +73,51 @@ public class AgentAnimationSync : MonoBehaviour
             }
             
             // Ground movement animations
-            if (isMoving && currentAction == 2) // Action 2 = jog forward
+            if (currentAction == 4 && agent.IsRolling) // Action 4 = roll forward
+            {
+                animator.SetBool("IsJogging", false);
+                animator.SetBool("IsSprinting", false);
+                animator.SetBool("IsRolling", true);
+                if (!wasRolling)
+                {
+                    animator.SetTrigger("rollstart"); // Trigger roll start animation
+                    Debug.Log("Roll Start Animation");
+                }
+            }
+            else if (isMoving && currentAction == 2) // Action 2 = jog forward
             {
                 animator.SetBool("IsJogging", true);
                 animator.SetBool("IsSprinting", false);
-                
+                animator.SetBool("IsRolling", false);
             }
             else if (isMoving && currentAction == 3 && agent.IsSprinting) // Action 3 = sprint (only if actually sprinting, i.e., has stamina)
             {
                 animator.SetBool("IsJogging", false);
                 animator.SetBool("IsSprinting", true);
-                
+                animator.SetBool("IsRolling", false);
             }
             else
             {
                 animator.SetBool("IsJogging", false);
                 animator.SetBool("IsSprinting", false);
+                animator.SetBool("IsRolling", false);
             }
+            
+            // Handle roll end (when roll completes)
+            if (wasRolling && !agent.IsRolling)
+            {
+                animator.SetTrigger("rollend"); // Trigger roll end animation
+                Debug.Log("Roll End Animation");
+            }
+            
+            wasRolling = agent.IsRolling;
         }
         else // In air
         {
             // Turn off ground movement
             animator.SetBool("IsJogging", false);
             animator.SetBool("IsSprinting", false);
+            animator.SetBool("IsRolling", false);
             
             // Handle jump state transitions
             if (!wasGrounded && !isJumping)

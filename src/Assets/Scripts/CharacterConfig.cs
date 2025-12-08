@@ -86,14 +86,20 @@ public class CharacterConfig : ScriptableObject
     [Tooltip("Maximum stamina capacity")]
     public float maxStamina = 100f;
     
-    [Tooltip("Stamina consumed per second while sprinting")]
-    public float staminaConsumptionRate = 33.33f; // 100 / 3 seconds to deplete full bar
+    [Tooltip("Stamina consumed per second while sprinting. Reduced from 33.33 to allow stamina to build up for rolls/jumps.")]
+    public float staminaConsumptionRate = 20f; // Reduced from 33.33 - now matches regen rate, allows stamina to build up
     
-    [Tooltip("Stamina consumed per jump")]
-    public float jumpStaminaCost = 5f;
+    [Tooltip("Stamina consumed per jump. Increased from 5 to 20 to force agent to conserve stamina for jumps (20% of max stamina).")]
+    public float jumpStaminaCost = 20f; // Increased from 5f - forces agent to maintain ~20% stamina minimum to jump
     
-    [Tooltip("Stamina regenerated per second when not sprinting/jumping")]
-    public float staminaRegenRate = 20f; // Slower than consumption
+    [Tooltip("Stamina consumed per roll forward. Should be achievable mid-episode even after some sprinting. Reduced to allow rolls throughout episode.")]
+    public float rollStaminaCost = 60f; // Reduced from 120 to 60 (0.6x max stamina) - achievable even after sprinting
+    
+    [Tooltip("Stamina regenerated per second when not sprinting/jumping/rolling. Higher than consumption to allow stamina to build up for rolls/jumps.")]
+    public float staminaRegenRate = 30f; // Increased from 20 to 30 - faster regen allows stamina to build up even after sprinting
+    
+    [Tooltip("Penalty per step when stamina is critically low (< 20%). Discourages keeping stamina at 0.")]
+    public float lowStaminaPenalty = -0.002f; // Small penalty when stamina < 20 (0.2% of total reward per step)
     
     
     [Header("=== RL AGENT SETTINGS ===")]
@@ -116,10 +122,21 @@ public class CharacterConfig : ScriptableObject
     public float fallPenalty = -1f;
     
     [Tooltip("Maximum episode time in seconds before timeout. Should be sufficient for agent to reach target (calculated dynamically based on platform layout)")]
-    public float episodeTimeout = 90f;
+    public float episodeTimeout = 100f;
     
     [Tooltip("Raycast distance for obstacle detection (in units)")]
     public float obstacleRaycastDistance = 10f;
+    
+    [Header("=== STYLE ACTION REWARDS ===")]
+    [Tooltip("Base reward for roll actions (always given, encourages roll usage). Should be significant compared to progress reward (0.1/unit).")]
+    public float rollBaseReward = 0.5f; // Base reward for every roll (5x progress per unit, ~0.7% of total episode reward)
+    
+    [Tooltip("Style bonus magnitude for roll actions (applied in style episodes, in addition to base reward). Should be substantial to incentivize rolls.")]
+    public float rollStyleBonus = 1.5f; // Style bonus (15x progress per unit, ~2.2% of total episode reward per roll)
+    
+    [Tooltip("Probability that an episode will have style bonuses enabled (0.1 = 10%, 0.2 = 20%)")]
+    [Range(0f, 1f)]
+    public float styleEpisodeFrequency = 0.4f; // Increased from 15% to 40% - more episodes with style bonus
     
     
     [Header("=== GAME SETTINGS ===")]
