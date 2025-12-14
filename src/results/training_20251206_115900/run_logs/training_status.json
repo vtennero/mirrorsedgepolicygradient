@@ -1,0 +1,38 @@
+{
+    "ParkourRunner": {
+        "checkpoints": [
+            {
+                "steps": 499897,
+                "file_path": "results\\test_v26\\ParkourRunner\\ParkourRunner-499897.onnx",
+                "reward": 7.934451553556654,
+                "creation_time": 1765040852.5134163,
+                "auxillary_file_paths": [
+                    "results\\test_v26\\ParkourRunner\\ParkourRunner-499897.pt"
+                ]
+            },
+            {
+                "steps": 567359,
+                "file_path": "results\\test_v26\\ParkourRunner\\ParkourRunner-567359.onnx",
+                "reward": 6.890801846981049,
+                "creation_time": 1765040995.445737,
+                "auxillary_file_paths": [
+                    "results\\test_v26\\ParkourRunner\\ParkourRunner-567359.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 567359,
+            "file_path": "results\\test_v26\\ParkourRunner.onnx",
+            "reward": 6.890801846981049,
+            "creation_time": 1765040995.445737,
+            "auxillary_file_paths": [
+                "results\\test_v26\\ParkourRunner\\ParkourRunner-567359.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cu121"
+    }
+}

@@ -1,0 +1,29 @@
+{
+    "ParkourRunner": {
+        "checkpoints": [
+            {
+                "steps": 22962,
+                "file_path": "results\\training_20251206_121233\\ParkourRunner\\ParkourRunner-22962.onnx",
+                "reward": 1.6624457807075688,
+                "creation_time": 1765042206.8224678,
+                "auxillary_file_paths": [
+                    "results\\training_20251206_121233\\ParkourRunner\\ParkourRunner-22962.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 22962,
+            "file_path": "results\\training_20251206_121233\\ParkourRunner.onnx",
+            "reward": 1.6624457807075688,
+            "creation_time": 1765042206.8224678,
+            "auxillary_file_paths": [
+                "results\\training_20251206_121233\\ParkourRunner\\ParkourRunner-22962.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cu121"
+    }
+}

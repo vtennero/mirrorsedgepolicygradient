@@ -1,0 +1,47 @@
+{
+    "ParkourRunner": {
+        "checkpoints": [
+            {
+                "steps": 499877,
+                "file_path": "results\\inference_v21_2025-12-02_09-49-33\\ParkourRunner\\ParkourRunner-499877.onnx",
+                "reward": 40.86573825605019,
+                "creation_time": 1764695235.91364,
+                "auxillary_file_paths": [
+                    "results\\inference_v21_2025-12-02_09-49-33\\ParkourRunner\\ParkourRunner-499877.pt"
+                ]
+            },
+            {
+                "steps": 999989,
+                "file_path": "results\\inference_v21_2025-12-02_09-49-33\\ParkourRunner\\ParkourRunner-999989.onnx",
+                "reward": 40.996465791701795,
+                "creation_time": 1764703686.2969134,
+                "auxillary_file_paths": [
+                    "results\\inference_v21_2025-12-02_09-49-33\\ParkourRunner\\ParkourRunner-999989.pt"
+                ]
+            },
+            {
+                "steps": 1499933,
+                "file_path": "results\\inference_v21_2025-12-02_09-49-33\\ParkourRunner\\ParkourRunner-1499933.onnx",
+                "reward": 41.01417477100757,
+                "creation_time": 1764711627.356591,
+                "auxillary_file_paths": [
+                    "results\\inference_v21_2025-12-02_09-49-33\\ParkourRunner\\ParkourRunner-1499933.pt"
+                ]
+            },
+            {
+                "steps": 1999886,
+                "file_path": "results\\inference_v21_2025-12-02_09-49-33\\ParkourRunner\\ParkourRunner-1999886.onnx",
+                "reward": 41.10589648267733,
+                "creation_time": 1764719719.0947154,
+                "auxillary_file_paths": [
+                    "results\\inference_v21_2025-12-02_09-49-33\\ParkourRunner\\ParkourRunner-1999886.pt"
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cu121"
+    }
+}

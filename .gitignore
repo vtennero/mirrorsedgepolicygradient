@@ -118,10 +118,6 @@ InitTestScene*.unity*
 *.tfevents.*
 events.out.tfevents.*
 
-# ML training results directory (contains large model files)
-/results/
-**/results/
-
 # Large data files
 *.bin
 *.data

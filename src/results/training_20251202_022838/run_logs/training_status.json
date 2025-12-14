@@ -1,0 +1,65 @@
+{
+    "ParkourRunner": {
+        "checkpoints": [
+            {
+                "steps": 499952,
+                "file_path": "results\\test_v20\\ParkourRunner\\ParkourRunner-499952.onnx",
+                "reward": 30.526903171430934,
+                "creation_time": 1764660997.168987,
+                "auxillary_file_paths": [
+                    "results\\test_v20\\ParkourRunner\\ParkourRunner-499952.pt"
+                ]
+            },
+            {
+                "steps": 999896,
+                "file_path": "results\\test_v20\\ParkourRunner\\ParkourRunner-999896.onnx",
+                "reward": 31.83458230547283,
+                "creation_time": 1764661449.6958663,
+                "auxillary_file_paths": [
+                    "results\\test_v20\\ParkourRunner\\ParkourRunner-999896.pt"
+                ]
+            },
+            {
+                "steps": 1499890,
+                "file_path": "results\\test_v20\\ParkourRunner\\ParkourRunner-1499890.onnx",
+                "reward": 31.85239133834839,
+                "creation_time": 1764661908.424405,
+                "auxillary_file_paths": [
+                    "results\\test_v20\\ParkourRunner\\ParkourRunner-1499890.pt"
+                ]
+            },
+            {
+                "steps": 1999981,
+                "file_path": "results\\test_v20\\ParkourRunner\\ParkourRunner-1999981.onnx",
+                "reward": 31.602994561195374,
+                "creation_time": 1764662365.984454,
+                "auxillary_file_paths": [
+                    "results\\test_v20\\ParkourRunner\\ParkourRunner-1999981.pt"
+                ]
+            },
+            {
+                "steps": 2000048,
+                "file_path": "results\\test_v20\\ParkourRunner\\ParkourRunner-2000048.onnx",
+                "reward": 31.890994389851887,
+                "creation_time": 1764662366.0676005,
+                "auxillary_file_paths": [
+                    "results\\test_v20\\ParkourRunner\\ParkourRunner-2000048.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 2000048,
+            "file_path": "results\\test_v20\\ParkourRunner.onnx",
+            "reward": 31.890994389851887,
+            "creation_time": 1764662366.0676005,
+            "auxillary_file_paths": [
+                "results\\test_v20\\ParkourRunner\\ParkourRunner-2000048.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.1.0",
+        "torch_version": "2.2.2+cu121"
+    }
+}
