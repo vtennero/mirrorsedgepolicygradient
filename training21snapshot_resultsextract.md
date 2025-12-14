@@ -110,8 +110,21 @@ Result: Roll usage increased from 0.69% to 7.81% (11.3x increase)
 
 System State
 
-Observations: 14 (target pos, velocity, grounded, 5 platform raycasts, obstacle, stamina)
-Actions: 5 (idle, jump, jog, sprint, roll)
+Observations (14 floats total):
+1. Target relative position: 3 floats (target.position - agent.position)
+2. Velocity: 3 floats (controller.velocity, units/sec)
+3. Grounded state: 1 float (1.0 if grounded, 0.0 if not)
+4. Platform raycasts: 5 floats (downward raycasts at 2f, 4f, 6f, 8f, 10f ahead, normalized 0.0-1.0)
+5. Obstacle distance: 1 float (forward raycast, normalized 0.0-1.0)
+6. Stamina: 1 float (currentStamina / maxStamina, normalized 0.0-1.0)
+
+Actions (5 discrete, single branch):
+0. Idle (no movement)
+1. Jump (vertical jump with forward boost, requires grounded and stamina >= 20)
+2. Jog (forward movement at 6 units/sec)
+3. Sprint (forward movement at 12 units/sec, requires stamina > 0 and no cooldown)
+4. Roll (forward roll at 18 units/sec, requires stamina >= 60 and not already rolling)
+
 Environment: 20 randomized platforms, 2.5-4.5 unit gaps
 Agent Capability: Navigates randomized environments, manages stamina, uses all actions including rolls
 

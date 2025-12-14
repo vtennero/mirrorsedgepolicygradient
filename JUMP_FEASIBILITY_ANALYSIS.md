@@ -115,3 +115,5 @@ if (distanceToTargetX < config.targetReachDistance) // 2.0 units
 - ❌ Too restrictive
 
 
+
+

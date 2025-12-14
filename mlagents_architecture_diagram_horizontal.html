@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML-Agents Architecture - Parkour Agent (Horizontal)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 2400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a9eff;
+            margin-bottom: 20px;
+            font-size: 2.2em;
+        }
+        
+        .main-layout {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .left-section {
+            display: flex;
+            gap: 20px;
+            flex: 2;
+        }
+        
+        .right-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .unity-box {
+            flex: 1;
+            background: linear-gradient(135deg, #2d5aa0 0%, #1e3a5f 100%);
+            border: 3px solid #4a9eff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(74, 158, 255, 0.3);
+        }
+        
+        .python-box {
+            background: linear-gradient(135deg, #2d7a2d 0%, #1e4a1e 100%);
+            border: 3px solid #4aff4a;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(74, 255, 74, 0.3);
+        }
+        
+        .api-box {
+            background: linear-gradient(135deg, #7a5a2d 0%, #4a3a1e 100%);
+            border: 3px solid #ffaa4a;
+            border-radius: 15px;
+            padding: 20px;
+            min-width: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 32px rgba(255, 170, 74, 0.3);
+        }
+        
+        .box-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-align: center;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .component {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .component-title {
+            font-weight: bold;
+            font-size: 1.0em;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        
+        .component-item {
+            margin: 6px 0;
+            padding-left: 12px;
+            font-size: 1.1em;
+            line-height: 1.5;
+        }
+        
+        .component-item::before {
+            content: "→ ";
+            color: #4a9eff;
+            font-weight: bold;
+        }
+        
+        .python-box .component-item::before {
+            color: #4aff4a;
+        }
+        
+        .update-loop {
+            background: rgba(255, 200, 0, 0.2);
+            border: 2px solid #ffc800;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+        
+        .update-loop-title {
+            font-weight: bold;
+            color: #ffc800;
+            margin-bottom: 8px;
+            font-size: 1.0em;
+        }
+        
+        .api-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ffaa4a;
+            margin-bottom: 10px;
+        }
+        
+        .api-details {
+            font-size: 0.95em;
+            text-align: center;
+            color: #ffc800;
+        }
+        
+        .webui-box {
+            background: linear-gradient(135deg, #5a2d7a 0%, #3a1e4a 100%);
+            border: 3px solid #aa4aff;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 8px 32px rgba(170, 74, 255, 0.3);
+        }
+        
+        .webui-content {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .webui-item {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .flow-diagram {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+        
+        .flow-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .flow-step {
+            background: rgba(74, 158, 255, 0.2);
+            border: 2px solid #4a9eff;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .flow-step-number {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #4a9eff;
+            margin-bottom: 4px;
+        }
+        
+        .flow-step div:not(.flow-step-number) {
+            font-size: 0.9em;
+        }
+        
+        .flow-arrow {
+            font-size: 1.5em;
+            color: #ffaa4a;
+            margin: 0 5px;
+        }
+        
+        .config-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .config-title {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .config-items {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 1.0em;
+        }
+        
+        .code-tag {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+        }
+        
+        .highlight-csharp {
+            color: #4a9eff;
+            font-weight: bold;
+        }
+        
+        .highlight-python {
+            color: #4aff4a;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ML-Agents Architecture - Parkour Training System</h1>
+        
+        <div class="main-layout">
+            <div class="left-section">
+                <!-- Unity Side (C#) -->
+                <div class="unity-box">
+                    <div class="box-title">UNITY ENGINE <span class="highlight-csharp">(C#)</span></div>
+                    
+                    <div class="component">
+                        <div class="component-title">🎮 Game Engine</div>
+                        <div class="component-item">28 TrainingArea objects (parallel agents)</div>
+                        <div class="component-item">Physics simulation (gravity, collisions)</div>
+                        <div class="component-item">Platform generation (randomized)</div>
+                        <div class="component-item">Target positioning</div>
+                    </div>
+                    
+                    <div class="component">
+                        <div class="component-title">🎬 Animation Engine</div>
+                        <div class="component-item">CharacterController movement</div>
+                        <div class="component-item">Jump, Sprint, Roll animations</div>
+                        <div class="component-item">AgentAnimationSync</div>
+                        <div class="component-item">Stamina system (consumption/regen)</div>
+                    </div>
+                    
+                    <div class="component">
+                        <div class="component-title">🤖 ParkourAgent.cs</div>
+                        <div class="component-item"><span class="code-tag">CollectObservations()</span> - 14 floats</div>
+                        <div class="component-item"><span class="code-tag">OnActionReceived()</span> - 5 discrete actions</div>
+                        <div class="component-item"><span class="code-tag">AddReward()</span> - reward signals</div>
+                        <div class="component-item"><span class="code-tag">OnEpisodeBegin()</span> - episode reset</div>
+                        <div class="component-item"><span class="code-tag">EndEpisode()</span> - success/failure</div>
+                    </div>
+                    
+                    <div class="update-loop">
+                        <div class="update-loop-title">🔄 Update Loop (FixedUpdate)</div>
+                        <div class="component-item">Physics step: 0.02s (50Hz fixed)</div>
+                        <div class="component-item">ML-Agents calls CollectObservations()</div>
+                        <div class="component-item">Apply action from Python</div>
+                        <div class="component-item">Update stamina, movement, physics</div>
+                        <div class="component-item">Send observations + rewards to Python</div>
+                    </div>
+                </div>
+                
+                <!-- gRPC API -->
+                <div class="api-box">
+                    <div class="api-title">gRPC API</div>
+                    <div class="api-details">
+                        <div style="margin-bottom: 12px;">
+                            <strong>Communication Protocol</strong><br>
+                            Port: 5005<br>
+                            TCP/IP Network
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <div style="margin-bottom: 8px;">⬇️ Unity → Python</div>
+                            <div style="font-size: 0.9em;">Observations (14 floats × 28 agents)<br>Rewards<br>Episode status</div>
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <div style="margin-bottom: 8px;">⬆️ Python → Unity</div>
+                            <div style="font-size: 0.9em;">Actions (0-4 × 28 agents)<br>Policy updates</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Section -->
+            <div class="right-section">
+                <!-- Python Side -->
+                <div class="python-box">
+                    <div class="box-title">PYTHON TRAINER <span class="highlight-python">(Python)</span></div>
+                    
+                    <div class="component">
+                        <div class="component-title">🧠 PPO Algorithm</div>
+                        <div class="component-item">Policy Network (Actor): 2×256 units</div>
+                        <div class="component-item">Value Network (Critic): 2×128 units</div>
+                        <div class="component-item">GAE (λ=0.95) advantage estimation</div>
+                        <div class="component-item">PPO clipping (ε=0.2)</div>
+                    </div>
+                    
+                    <div class="component">
+                        <div class="component-title">📊 Training Loop</div>
+                        <div class="component-item">Collect experiences (buffer: 10240)</div>
+                        <div class="component-item">Time horizon: 128 steps</div>
+                        <div class="component-item">Batch size: 1024, 5 epochs</div>
+                        <div class="component-item">Update policy + value networks</div>
+                        <div class="component-item">Save checkpoints (every 500k steps)</div>
+                    </div>
+                    
+                    <div class="component">
+                        <div class="component-title">⚙️ mlagents-learn</div>
+                        <div class="component-item">Connects to Unity via gRPC</div>
+                        <div class="component-item">Manages 28 parallel agents</div>
+                        <div class="component-item">Logs metrics to TensorBoard</div>
+                        <div class="component-item">Config: parkour_config.yaml</div>
+                    </div>
+                </div>
+                
+                <!-- WebUI -->
+                <div class="webui-box">
+                    <div class="box-title">📊 MONITORING & VISUALIZATION</div>
+                    <div class="webui-content">
+                        <div class="webui-item">
+                            <div class="component-title">🌐 Flask Dashboard</div>
+                        </div>
+                        <div class="webui-item">
+                            <div class="component-title">📈 TensorBoard</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Config -->
+                <div class="config-box">
+                    <div class="config-title">Training Configuration</div>
+                    <div class="config-items">
+                        <div><strong>Agents:</strong> 28 parallel</div>
+                        <div><strong>Max Steps:</strong> 2,000,000</div>
+                        <div><strong>Time Scale:</strong> 20x</div>
+                        <div><strong>Duration:</strong> ~31.6 min</div>
+                        <div><strong>Final Reward:</strong> +89.18</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Training Flow at Bottom -->
+        <div class="flow-diagram">
+            <div class="flow-step">
+                <div class="flow-step-number">1</div>
+                <div>Unity collects<br>14 obs × 28</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div class="flow-step-number">2</div>
+                <div>gRPC sends<br>to Python</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div class="flow-step-number">3</div>
+                <div>Policy outputs<br>probabilities</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div class="flow-step-number">4</div>
+                <div>Sample actions<br>sent back</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div class="flow-step-number">5</div>
+                <div>Unity executes<br>+ rewards</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div class="flow-step-number">6</div>
+                <div>Every 128:<br>PPO update</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

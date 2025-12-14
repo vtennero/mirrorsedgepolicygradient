@@ -175,3 +175,5 @@ All parameters are in `CharacterConfig` ScriptableObject:
 
 **Status**: Code implementation 100% complete. Unity setup required (see `ROLL_ANIMATION_WORKFLOW.md`).
 
+
+
