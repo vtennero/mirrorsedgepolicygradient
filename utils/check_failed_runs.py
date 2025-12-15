@@ -361,12 +361,23 @@ Examples:
                         help='Show what would be deleted without actually deleting')
     parser.add_argument('--yes', '-y', action='store_true',
                         help='Skip confirmation prompt (auto-confirm deletion)')
-    parser.add_argument('--results-dir', type=str, default='src/results',
-                        help='Path to results directory (default: src/results)')
+    parser.add_argument('--results-dir', type=str, default=None,
+                        help='Path to results directory (default: src/results relative to project root)')
     
     args = parser.parse_args()
     
-    results_dir = Path(args.results_dir)
+    # Resolve path relative to project root (parent of utils directory)
+    if args.results_dir is None:
+        script_dir = Path(__file__).parent
+        project_root = script_dir.parent
+        results_dir = project_root / 'src' / 'results'
+    else:
+        results_dir = Path(args.results_dir)
+        if not results_dir.is_absolute():
+            # If relative path provided, resolve relative to project root
+            script_dir = Path(__file__).parent
+            project_root = script_dir.parent
+            results_dir = project_root / results_dir
     
     print("Scanning results directory...")
     print()
@@ -394,4 +405,5 @@ Examples:
 
 if __name__ == "__main__":
     main()
+
 

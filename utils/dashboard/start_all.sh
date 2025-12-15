@@ -6,6 +6,23 @@ echo "ML-Agents Training Monitoring"
 echo "============================================"
 echo ""
 
+# Activate conda environment
+if command -v conda &> /dev/null; then
+    echo "Activating conda environment: mlagents"
+    # Initialize conda for bash shell
+    eval "$(conda shell.bash hook)"
+    conda activate mlagents
+    if [ $? -ne 0 ]; then
+        echo "[WARNING] Failed to activate mlagents environment"
+        echo "Continuing with current environment..."
+    fi
+    echo ""
+else
+    echo "[WARNING] conda command not found"
+    echo "Continuing without conda activation..."
+    echo ""
+fi
+
 # Check if Python is available
 if ! command -v python3 &> /dev/null && ! command -v python &> /dev/null; then
     echo "[ERROR] Python is not installed or not in PATH"
@@ -78,25 +95,6 @@ echo "   - Real-time training graphs"
 echo "   - Reward curves"
 echo "   - Loss metrics"
 echo ""
-echo "============================================"
-echo ""
-echo "Process IDs:"
-echo "  Dashboard:   $DASHBOARD_PID"
-echo "  TensorBoard: $TENSORBOARD_PID"
-echo ""
-echo "Logs:"
-echo "  Dashboard:   $SCRIPT_DIR/dashboard.log"
-echo "  TensorBoard: $SCRIPT_DIR/tensorboard.log"
-echo ""
-echo "To stop all services, run:"
-echo "  kill $DASHBOARD_PID $TENSORBOARD_PID"
-echo ""
-echo "Or press Ctrl+C and then run:"
-echo "  pkill -f 'python.*app.py'"
-echo "  pkill -f 'tensorboard'"
-echo ""
-echo "Press Ctrl+C to stop monitoring..."
-echo "============================================"
 
 # Function to cleanup on exit
 cleanup() {

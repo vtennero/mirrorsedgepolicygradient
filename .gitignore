@@ -122,3 +122,6 @@ events.out.tfevents.*
 *.bin
 *.data
 *.weights
+
+# Training run logs (can be very large)
+**/run_logs/*.json

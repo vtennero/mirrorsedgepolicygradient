@@ -56,11 +56,25 @@ public class ParkourAgent : Agent
     private float rollStartTime = 0f;
     private const float ROLL_DURATION = 0.6f; // Duration of roll animation/movement (tune as needed)
     
+    // Training logger tracking
+    private int episodeNumber = 0;
+    private int episodeTimestep = 0; // Timestep within current episode (for stamina sampling)
+    
     // Public property for animation sync (checks if actually sprinting, considering stamina)
     public bool IsSprinting => currentAction == 3 && currentStamina > 0f;
     
     // Public property for animation sync (checks if currently rolling)
     public bool IsRolling => isRolling;
+    
+    void OnDestroy()
+    {
+        // Flush all remaining data when agent is destroyed (training ends)
+        if (TrainingLogger.Instance.IsInitialized())
+        {
+            TrainingLogger.Instance.FlushAll();
+            Debug.Log("[ParkourAgent] Flushed all TrainingLogger data on destroy");
+        }
+    }
     
     public override void Initialize()
     {
@@ -110,6 +124,8 @@ public class ParkourAgent : Agent
         
         startPos = transform.position;
         lastProgressZ = startPos.x; // Fixed: track X, not Z
+        
+        // Note: TrainingLogger will be initialized lazily on first use to avoid interfering with ML-Agents startup
     }
     
     /// <summary>
@@ -307,6 +323,31 @@ public class ParkourAgent : Agent
         // Reset roll state
         isRolling = false;
         rollStartTime = 0f;
+        
+        // Increment episode number and reset timestep
+        episodeNumber++;
+        episodeTimestep = 0;
+        
+        // Initialize logger lazily on first episode (after ML-Agents is fully ready)
+        // Always call Initialize() to re-check for new training directories
+        TrainingLogger.Instance.Initialize();
+        
+        // Set metadata only once (on first successful initialization)
+        if (TrainingLogger.Instance.IsInitialized() && episodeNumber == 1)
+        {
+            TrainingLogger.Instance.SetMetadata(config.styleEpisodeFrequency);
+        }
+        
+        // Start episode tracking in logger (only if initialized)
+        if (TrainingLogger.Instance.IsInitialized())
+        {
+            int stepCount = Academy.Instance.StepCount;
+            TrainingLogger.Instance.StartEpisode(episodeNumber, stepCount);
+        }
+        else
+        {
+            Debug.LogWarning($"[ParkourAgent] TrainingLogger not initialized. Episode {episodeNumber} will not be logged.");
+        }
         
         Debug.Log($"[ParkourAgent] OnEpisodeBegin completed successfully");
     }
@@ -548,6 +589,14 @@ public class ParkourAgent : Agent
     
     public override void OnActionReceived(ActionBuffers actions)
     {
+        // Safety check: ensure actions are valid
+        if (actions.DiscreteActions.Length == 0)
+        {
+            Debug.LogWarning("[ParkourAgent] Received invalid action buffer. Using default action (idle).");
+            currentAction = 0;
+            return;
+        }
+        
         // Get config once at the start of the method
         CharacterConfig config = CharacterConfigManager.Config;
         
@@ -616,6 +665,7 @@ public class ParkourAgent : Agent
         }
         
         episodeTimer += Time.fixedDeltaTime;
+        episodeTimestep++;
         
         // Track action distribution (track original action before blocking)
         int originalAction = actions.DiscreteActions[0];
@@ -627,6 +677,10 @@ public class ParkourAgent : Agent
             case 3: sprintActionCount++; break;
             case 4: rollActionCount++; break;
         }
+        
+        // Log stamina (sampled to reduce file size)
+        int stepCount = Academy.Instance.StepCount;
+        TrainingLogger.Instance.RecordStamina(episodeTimestep, currentStamina, stepCount);
         
         // Handle one-time actions (jump) - only if we have stamina
         if (currentAction == 1 && controller.isGrounded)
@@ -650,6 +704,7 @@ public class ParkourAgent : Agent
             float progressReward = progressDelta * config.progressRewardMultiplier;
             AddReward(progressReward);
             episodeReward += progressReward;
+            TrainingLogger.Instance.RecordRewardComponent("progress", progressReward);
         }
         lastProgressZ = currentX;
         
@@ -663,8 +718,10 @@ public class ParkourAgent : Agent
         // 2. Staying alive/on platform reward (encourages not falling)
         if (controller.isGrounded)
         {
-            AddReward(0.001f); // Small reward per step for being on ground
-            episodeReward += 0.001f;
+            float groundedReward = 0.001f; // Small reward per step for being on ground
+            AddReward(groundedReward);
+            episodeReward += groundedReward;
+            TrainingLogger.Instance.RecordRewardComponent("grounded", groundedReward);
         }
         
         // 2.25. Low stamina penalty (discourages keeping stamina at 0, encourages conservation for rolls/jumps)
@@ -673,6 +730,7 @@ public class ParkourAgent : Agent
         {
             AddReward(config.lowStaminaPenalty);
             episodeReward += config.lowStaminaPenalty;
+            TrainingLogger.Instance.RecordRewardComponent("low_stamina_penalty", config.lowStaminaPenalty);
         }
         
         // 2.5. Roll rewards (base reward always, style bonus in style episodes)
@@ -681,12 +739,14 @@ public class ParkourAgent : Agent
             // Base reward: always given to encourage roll usage
             AddReward(config.rollBaseReward);
             episodeReward += config.rollBaseReward;
+            TrainingLogger.Instance.RecordRewardComponent("roll_base", config.rollBaseReward);
             
             // Style bonus: additional reward in style episodes
             if (styleBonusEnabled)
             {
                 AddReward(config.rollStyleBonus);
                 episodeReward += config.rollStyleBonus;
+                TrainingLogger.Instance.RecordRewardComponent("roll_style", config.rollStyleBonus);
                 if (Time.frameCount % 50 == 0) // Log occasionally to avoid spam
                 {
                     Debug.Log($"[ParkourAgent] Roll reward: Base={config.rollBaseReward}, Style={config.rollStyleBonus}, Total={config.rollBaseReward + config.rollStyleBonus}");
@@ -697,6 +757,7 @@ public class ParkourAgent : Agent
         // 3. Time penalty (encourages speed)
         AddReward(config.timePenalty);
         episodeReward += config.timePenalty;
+        TrainingLogger.Instance.RecordRewardComponent("time_penalty", config.timePenalty);
         
         // 3. Reached target (only if target is assigned)
         // Use X-axis distance only (not 3D) to avoid issues when agent passes target at different Y height
@@ -714,6 +775,12 @@ public class ParkourAgent : Agent
                 Debug.Log($"[ParkourAgent] REACHED TARGET! Agent X: {transform.position.x:F2}, Target X: {target.position.x:F2}, Distance X: {distanceToTargetX:F2}");
                 AddReward(config.targetReachReward);
                 episodeReward += config.targetReachReward;
+                TrainingLogger.Instance.RecordRewardComponent("target_reach", config.targetReachReward);
+                
+                // End episode tracking
+                stepCount = Academy.Instance.StepCount;
+                TrainingLogger.Instance.EndEpisode(episodeNumber, episodeTimer, maxDistanceReached, "Success", stepCount);
+                
                 LogEpisodeStats("Success");
                 
                 // Flash green screen in demo mode
@@ -790,6 +857,12 @@ public class ParkourAgent : Agent
             Debug.LogError(debugInfo);
             AddReward(config.fallPenalty);
             episodeReward += config.fallPenalty;
+            TrainingLogger.Instance.RecordRewardComponent("fall_penalty", config.fallPenalty);
+            
+            // End episode tracking
+            int finalStepCount = Academy.Instance.StepCount;
+            TrainingLogger.Instance.EndEpisode(episodeNumber, episodeTimer, maxDistanceReached, endReason, finalStepCount);
+            
             LogEpisodeStats(endReason);
             
             // Flash red screen in demo mode

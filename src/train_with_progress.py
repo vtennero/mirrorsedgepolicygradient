@@ -105,6 +105,25 @@ def main():
     
     # Wait for process to complete
     return_code = process.wait()
+    
+    # After training completes, extract TensorBoard data
+    if return_code == 0:
+        print("\n" + "=" * 80)
+        print("Training completed successfully. Extracting TensorBoard data...")
+        print("=" * 80)
+        
+        try:
+            script_dir = Path(__file__).parent
+            extract_script = script_dir / "extract_tensorboard_data.py"
+            
+            if extract_script.exists():
+                subprocess.run([sys.executable, str(extract_script), run_id], check=False)
+            else:
+                print(f"Warning: Extraction script not found at {extract_script}")
+        except Exception as e:
+            print(f"Warning: Failed to extract TensorBoard data: {e}")
+            print("You can manually run: python extract_tensorboard_data.py")
+    
     sys.exit(return_code)
 
 if __name__ == "__main__":

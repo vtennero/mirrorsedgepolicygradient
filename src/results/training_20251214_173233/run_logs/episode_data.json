@@ -1,0 +1,704 @@
+{
+  "episodes": [
+    {
+      "episodeNumber": 1,
+      "stepCount": 20000,
+      "length": 4.544647693634033,
+      "maxDistance": 26.091541290283203,
+      "success": true
+    },
+    {
+      "episodeNumber": 2,
+      "stepCount": 40000,
+      "length": 4.666398048400879,
+      "maxDistance": 31.061798095703125,
+      "success": true
+    },
+    {
+      "episodeNumber": 3,
+      "stepCount": 60000,
+      "length": 4.539060115814209,
+      "maxDistance": 32.203460693359375,
+      "success": true
+    },
+    {
+      "episodeNumber": 4,
+      "stepCount": 80000,
+      "length": 5.741931438446045,
+      "maxDistance": 40.813331604003906,
+      "success": true
+    },
+    {
+      "episodeNumber": 5,
+      "stepCount": 100000,
+      "length": 5.64058256149292,
+      "maxDistance": 41.53652572631836,
+      "success": true
+    },
+    {
+      "episodeNumber": 6,
+      "stepCount": 120000,
+      "length": 5.997702121734619,
+      "maxDistance": 44.17897415161133,
+      "success": true
+    },
+    {
+      "episodeNumber": 7,
+      "stepCount": 140000,
+      "length": 7.674506664276123,
+      "maxDistance": 54.95849609375,
+      "success": true
+    },
+    {
+      "episodeNumber": 8,
+      "stepCount": 160000,
+      "length": 10.028264999389648,
+      "maxDistance": 69.98159790039062,
+      "success": true
+    },
+    {
+      "episodeNumber": 9,
+      "stepCount": 180000,
+      "length": 11.824728012084961,
+      "maxDistance": 82.02049255371094,
+      "success": true
+    },
+    {
+      "episodeNumber": 10,
+      "stepCount": 200000,
+      "length": 15.392688751220703,
+      "maxDistance": 105.4385986328125,
+      "success": true
+    },
+    {
+      "episodeNumber": 11,
+      "stepCount": 220000,
+      "length": 11.657195091247559,
+      "maxDistance": 81.44210815429688,
+      "success": true
+    },
+    {
+      "episodeNumber": 12,
+      "stepCount": 240000,
+      "length": 16.089656829833984,
+      "maxDistance": 112.40022277832031,
+      "success": true
+    },
+    {
+      "episodeNumber": 13,
+      "stepCount": 260000,
+      "length": 19.83973503112793,
+      "maxDistance": 135.69635009765625,
+      "success": true
+    },
+    {
+      "episodeNumber": 14,
+      "stepCount": 280000,
+      "length": 17.908029556274414,
+      "maxDistance": 127.02069854736328,
+      "success": true
+    },
+    {
+      "episodeNumber": 15,
+      "stepCount": 300000,
+      "length": 22.228858947753906,
+      "maxDistance": 155.60227966308594,
+      "success": true
+    },
+    {
+      "episodeNumber": 16,
+      "stepCount": 320000,
+      "length": 20.027950286865234,
+      "maxDistance": 144.30604553222656,
+      "success": true
+    },
+    {
+      "episodeNumber": 17,
+      "stepCount": 340000,
+      "length": 27.902359008789062,
+      "maxDistance": 196.46389770507812,
+      "success": true
+    },
+    {
+      "episodeNumber": 18,
+      "stepCount": 360000,
+      "length": 32.798099517822266,
+      "maxDistance": 232.125,
+      "success": true
+    },
+    {
+      "episodeNumber": 19,
+      "stepCount": 380000,
+      "length": 28.406904220581055,
+      "maxDistance": 209.5160675048828,
+      "success": true
+    },
+    {
+      "episodeNumber": 20,
+      "stepCount": 400000,
+      "length": 32.353328704833984,
+      "maxDistance": 235.54278564453125,
+      "success": true
+    },
+    {
+      "episodeNumber": 21,
+      "stepCount": 420000,
+      "length": 29.384721755981445,
+      "maxDistance": 210.98977661132812,
+      "success": true
+    },
+    {
+      "episodeNumber": 22,
+      "stepCount": 440000,
+      "length": 31.059106826782227,
+      "maxDistance": 229.48545837402344,
+      "success": true
+    },
+    {
+      "episodeNumber": 23,
+      "stepCount": 460000,
+      "length": 34.20655059814453,
+      "maxDistance": 248.9123077392578,
+      "success": true
+    },
+    {
+      "episodeNumber": 24,
+      "stepCount": 480000,
+      "length": 30.05140495300293,
+      "maxDistance": 225.57435607910156,
+      "success": true
+    },
+    {
+      "episodeNumber": 25,
+      "stepCount": 500000,
+      "length": 30.482908248901367,
+      "maxDistance": 230.91197204589844,
+      "success": true
+    },
+    {
+      "episodeNumber": 26,
+      "stepCount": 520000,
+      "length": 31.48264503479004,
+      "maxDistance": 236.17947387695312,
+      "success": true
+    },
+    {
+      "episodeNumber": 27,
+      "stepCount": 540000,
+      "length": 33.286399841308594,
+      "maxDistance": 247.758544921875,
+      "success": true
+    },
+    {
+      "episodeNumber": 28,
+      "stepCount": 560000,
+      "length": 39.908687591552734,
+      "maxDistance": 288.48699951171875,
+      "success": true
+    },
+    {
+      "episodeNumber": 29,
+      "stepCount": 580000,
+      "length": 38.88962936401367,
+      "maxDistance": 287.5751953125,
+      "success": true
+    },
+    {
+      "episodeNumber": 30,
+      "stepCount": 600000,
+      "length": 43.004276275634766,
+      "maxDistance": 313.2965087890625,
+      "success": true
+    },
+    {
+      "episodeNumber": 31,
+      "stepCount": 620000,
+      "length": 47.667198181152344,
+      "maxDistance": 348.844482421875,
+      "success": true
+    },
+    {
+      "episodeNumber": 32,
+      "stepCount": 640000,
+      "length": 44.71261215209961,
+      "maxDistance": 331.1553039550781,
+      "success": true
+    },
+    {
+      "episodeNumber": 33,
+      "stepCount": 660000,
+      "length": 37.079158782958984,
+      "maxDistance": 281.769775390625,
+      "success": true
+    },
+    {
+      "episodeNumber": 34,
+      "stepCount": 680000,
+      "length": 36.14815902709961,
+      "maxDistance": 279.3970031738281,
+      "success": true
+    },
+    {
+      "episodeNumber": 35,
+      "stepCount": 700000,
+      "length": 43.6545524597168,
+      "maxDistance": 337.1107177734375,
+      "success": true
+    },
+    {
+      "episodeNumber": 36,
+      "stepCount": 720000,
+      "length": 35.681060791015625,
+      "maxDistance": 275.77960205078125,
+      "success": true
+    },
+    {
+      "episodeNumber": 37,
+      "stepCount": 740000,
+      "length": 43.306339263916016,
+      "maxDistance": 331.2716369628906,
+      "success": true
+    },
+    {
+      "episodeNumber": 38,
+      "stepCount": 760000,
+      "length": 53.26383590698242,
+      "maxDistance": 410.41009521484375,
+      "success": true
+    },
+    {
+      "episodeNumber": 39,
+      "stepCount": 780000,
+      "length": 39.477725982666016,
+      "maxDistance": 310.092529296875,
+      "success": true
+    },
+    {
+      "episodeNumber": 40,
+      "stepCount": 800000,
+      "length": 52.24787521362305,
+      "maxDistance": 410.6041564941406,
+      "success": true
+    },
+    {
+      "episodeNumber": 41,
+      "stepCount": 820000,
+      "length": 48.06856918334961,
+      "maxDistance": 373.0517578125,
+      "success": true
+    },
+    {
+      "episodeNumber": 42,
+      "stepCount": 840000,
+      "length": 50.19020080566406,
+      "maxDistance": 392.58929443359375,
+      "success": true
+    },
+    {
+      "episodeNumber": 43,
+      "stepCount": 860000,
+      "length": 50.01036834716797,
+      "maxDistance": 390.06671142578125,
+      "success": true
+    },
+    {
+      "episodeNumber": 44,
+      "stepCount": 880000,
+      "length": 48.438987731933594,
+      "maxDistance": 372.26251220703125,
+      "success": true
+    },
+    {
+      "episodeNumber": 45,
+      "stepCount": 900000,
+      "length": 43.109825134277344,
+      "maxDistance": 336.9753112792969,
+      "success": true
+    },
+    {
+      "episodeNumber": 46,
+      "stepCount": 920000,
+      "length": 47.58528137207031,
+      "maxDistance": 373.92437744140625,
+      "success": true
+    },
+    {
+      "episodeNumber": 47,
+      "stepCount": 940000,
+      "length": 52.539405822753906,
+      "maxDistance": 412.19293212890625,
+      "success": true
+    },
+    {
+      "episodeNumber": 48,
+      "stepCount": 960000,
+      "length": 53.26246643066406,
+      "maxDistance": 419.8779602050781,
+      "success": true
+    },
+    {
+      "episodeNumber": 49,
+      "stepCount": 980000,
+      "length": 50.505741119384766,
+      "maxDistance": 401.7364501953125,
+      "success": true
+    },
+    {
+      "episodeNumber": 50,
+      "stepCount": 1000000,
+      "length": 56.40992736816406,
+      "maxDistance": 444.7249450683594,
+      "success": true
+    },
+    {
+      "episodeNumber": 51,
+      "stepCount": 1020000,
+      "length": 52.23207092285156,
+      "maxDistance": 410.1610107421875,
+      "success": true
+    },
+    {
+      "episodeNumber": 52,
+      "stepCount": 1040000,
+      "length": 40.652286529541016,
+      "maxDistance": 319.0402526855469,
+      "success": true
+    },
+    {
+      "episodeNumber": 53,
+      "stepCount": 1060000,
+      "length": 41.41501235961914,
+      "maxDistance": 327.7916259765625,
+      "success": true
+    },
+    {
+      "episodeNumber": 54,
+      "stepCount": 1080000,
+      "length": 41.669029235839844,
+      "maxDistance": 332.825439453125,
+      "success": true
+    },
+    {
+      "episodeNumber": 55,
+      "stepCount": 1100000,
+      "length": 51.224273681640625,
+      "maxDistance": 408.82958984375,
+      "success": true
+    },
+    {
+      "episodeNumber": 56,
+      "stepCount": 1120000,
+      "length": 50.15731430053711,
+      "maxDistance": 399.3547668457031,
+      "success": true
+    },
+    {
+      "episodeNumber": 57,
+      "stepCount": 1140000,
+      "length": 55.96821212768555,
+      "maxDistance": 447.8424377441406,
+      "success": true
+    },
+    {
+      "episodeNumber": 58,
+      "stepCount": 1160000,
+      "length": 57.90871810913086,
+      "maxDistance": 468.1502380371094,
+      "success": true
+    },
+    {
+      "episodeNumber": 59,
+      "stepCount": 1180000,
+      "length": 48.84286117553711,
+      "maxDistance": 392.3332214355469,
+      "success": true
+    },
+    {
+      "episodeNumber": 60,
+      "stepCount": 1200000,
+      "length": 61.313446044921875,
+      "maxDistance": 504.17657470703125,
+      "success": true
+    },
+    {
+      "episodeNumber": 61,
+      "stepCount": 1220000,
+      "length": 54.19871520996094,
+      "maxDistance": 448.01617431640625,
+      "success": true
+    },
+    {
+      "episodeNumber": 62,
+      "stepCount": 1240000,
+      "length": 56.85036087036133,
+      "maxDistance": 466.8561096191406,
+      "success": true
+    },
+    {
+      "episodeNumber": 63,
+      "stepCount": 1260000,
+      "length": 61.456886291503906,
+      "maxDistance": 506.50006103515625,
+      "success": true
+    },
+    {
+      "episodeNumber": 64,
+      "stepCount": 1280000,
+      "length": 47.76503372192383,
+      "maxDistance": 399.8922424316406,
+      "success": true
+    },
+    {
+      "episodeNumber": 65,
+      "stepCount": 1300000,
+      "length": 52.284305572509766,
+      "maxDistance": 430.27197265625,
+      "success": true
+    },
+    {
+      "episodeNumber": 66,
+      "stepCount": 1320000,
+      "length": 58.322845458984375,
+      "maxDistance": 476.39825439453125,
+      "success": true
+    },
+    {
+      "episodeNumber": 67,
+      "stepCount": 1340000,
+      "length": 48.25126266479492,
+      "maxDistance": 393.0969543457031,
+      "success": true
+    },
+    {
+      "episodeNumber": 68,
+      "stepCount": 1360000,
+      "length": 56.315025329589844,
+      "maxDistance": 466.06964111328125,
+      "success": true
+    },
+    {
+      "episodeNumber": 69,
+      "stepCount": 1380000,
+      "length": 62.464500427246094,
+      "maxDistance": 519.1624145507812,
+      "success": true
+    },
+    {
+      "episodeNumber": 70,
+      "stepCount": 1400000,
+      "length": 60.166839599609375,
+      "maxDistance": 500.8893127441406,
+      "success": true
+    },
+    {
+      "episodeNumber": 71,
+      "stepCount": 1420000,
+      "length": 49.6065559387207,
+      "maxDistance": 413.1923522949219,
+      "success": true
+    },
+    {
+      "episodeNumber": 72,
+      "stepCount": 1440000,
+      "length": 59.07231140136719,
+      "maxDistance": 490.4870910644531,
+      "success": true
+    },
+    {
+      "episodeNumber": 73,
+      "stepCount": 1460000,
+      "length": 64.91007995605469,
+      "maxDistance": 549.0025634765625,
+      "success": true
+    },
+    {
+      "episodeNumber": 74,
+      "stepCount": 1480000,
+      "length": 54.23780059814453,
+      "maxDistance": 456.2780456542969,
+      "success": true
+    },
+    {
+      "episodeNumber": 75,
+      "stepCount": 1500000,
+      "length": 61.56975555419922,
+      "maxDistance": 515.5286254882812,
+      "success": true
+    },
+    {
+      "episodeNumber": 76,
+      "stepCount": 1520000,
+      "length": 51.53931427001953,
+      "maxDistance": 438.064697265625,
+      "success": true
+    },
+    {
+      "episodeNumber": 77,
+      "stepCount": 1540000,
+      "length": 59.32350158691406,
+      "maxDistance": 510.1266174316406,
+      "success": true
+    },
+    {
+      "episodeNumber": 78,
+      "stepCount": 1560000,
+      "length": 51.5677604675293,
+      "maxDistance": 443.9089050292969,
+      "success": true
+    },
+    {
+      "episodeNumber": 79,
+      "stepCount": 1580000,
+      "length": 56.236167907714844,
+      "maxDistance": 483.1689147949219,
+      "success": true
+    },
+    {
+      "episodeNumber": 80,
+      "stepCount": 1600000,
+      "length": 61.52061462402344,
+      "maxDistance": 532.4041748046875,
+      "success": true
+    },
+    {
+      "episodeNumber": 81,
+      "stepCount": 1620000,
+      "length": 57.829612731933594,
+      "maxDistance": 502.32818603515625,
+      "success": true
+    },
+    {
+      "episodeNumber": 82,
+      "stepCount": 1640000,
+      "length": 52.69392776489258,
+      "maxDistance": 458.43597412109375,
+      "success": true
+    },
+    {
+      "episodeNumber": 83,
+      "stepCount": 1660000,
+      "length": 66.46096801757812,
+      "maxDistance": 582.91943359375,
+      "success": true
+    },
+    {
+      "episodeNumber": 84,
+      "stepCount": 1680000,
+      "length": 63.83707809448242,
+      "maxDistance": 567.5552368164062,
+      "success": true
+    },
+    {
+      "episodeNumber": 85,
+      "stepCount": 1700000,
+      "length": 59.899810791015625,
+      "maxDistance": 531.6964721679688,
+      "success": true
+    },
+    {
+      "episodeNumber": 86,
+      "stepCount": 1720000,
+      "length": 59.6389045715332,
+      "maxDistance": 529.537109375,
+      "success": true
+    },
+    {
+      "episodeNumber": 87,
+      "stepCount": 1740000,
+      "length": 57.50383758544922,
+      "maxDistance": 514.0525512695312,
+      "success": true
+    },
+    {
+      "episodeNumber": 88,
+      "stepCount": 1760000,
+      "length": 63.498680114746094,
+      "maxDistance": 570.7627563476562,
+      "success": true
+    },
+    {
+      "episodeNumber": 89,
+      "stepCount": 1780000,
+      "length": 57.56684494018555,
+      "maxDistance": 520.4887084960938,
+      "success": true
+    },
+    {
+      "episodeNumber": 90,
+      "stepCount": 1800000,
+      "length": 57.555789947509766,
+      "maxDistance": 519.2294921875,
+      "success": true
+    },
+    {
+      "episodeNumber": 91,
+      "stepCount": 1820000,
+      "length": 60.69332504272461,
+      "maxDistance": 550.8375244140625,
+      "success": true
+    },
+    {
+      "episodeNumber": 92,
+      "stepCount": 1840000,
+      "length": 64.0228500366211,
+      "maxDistance": 578.9384765625,
+      "success": true
+    },
+    {
+      "episodeNumber": 93,
+      "stepCount": 1860000,
+      "length": 58.49879837036133,
+      "maxDistance": 537.3854370117188,
+      "success": true
+    },
+    {
+      "episodeNumber": 94,
+      "stepCount": 1880000,
+      "length": 54.965484619140625,
+      "maxDistance": 505.115966796875,
+      "success": true
+    },
+    {
+      "episodeNumber": 95,
+      "stepCount": 1900000,
+      "length": 57.49014663696289,
+      "maxDistance": 524.9095458984375,
+      "success": true
+    },
+    {
+      "episodeNumber": 96,
+      "stepCount": 1920000,
+      "length": 60.16377258300781,
+      "maxDistance": 547.4807739257812,
+      "success": true
+    },
+    {
+      "episodeNumber": 97,
+      "stepCount": 1940000,
+      "length": 60.249080657958984,
+      "maxDistance": 550.6103515625,
+      "success": true
+    },
+    {
+      "episodeNumber": 98,
+      "stepCount": 1960000,
+      "length": 55.2083854675293,
+      "maxDistance": 510.6506652832031,
+      "success": true
+    },
+    {
+      "episodeNumber": 99,
+      "stepCount": 1980000,
+      "length": 57.51331329345703,
+      "maxDistance": 531.2199096679688,
+      "success": true
+    },
+    {
+      "episodeNumber": 100,
+      "stepCount": 2000000,
+      "length": 56.281044006347656,
+      "maxDistance": 519.2892456054688,
+      "success": true
+    }
+  ]
+}

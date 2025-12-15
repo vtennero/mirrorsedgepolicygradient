@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training Analysis - ML-Agents Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #212529;
+        }
+        
+        .chart-subtitle {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-bottom: 0.75rem;
+        }
+        
+        .chart-container canvas {
+            flex: 1;
+            min-height: 250px;
+        }
+        
+        .data-unavailable {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .run-selector {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Responsive: 2 columns on tablets */
+        @media (max-width: 992px) {
+            .charts-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        /* Responsive: 1 column on mobile */
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-graph-up"></i> Training Analysis
+            </span>
+            <span class="text-white">
+                <a href="/" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <!-- Run Selector -->
+        <div class="run-selector">
+            <label for="runSelect" class="form-label fw-bold">Select Training Run:</label>
+            <select class="form-select" id="runSelect" onchange="loadRunData()">
+                <option value="">Loading runs...</option>
+            </select>
+        </div>
+
+        <div class="charts-grid">
+            <!-- Graph 1: Training Curve -->
+            <div class="chart-container">
+                <div class="chart-title">1. Training Curve: Cumulative Reward vs Training Steps</div>
+                <div class="chart-subtitle">X: Training steps (0 to 2M) | Y: Mean episode reward</div>
+                <canvas id="trainingCurveChart"></canvas>
+                <div id="trainingCurveError" class="data-unavailable" style="display: none;"></div>
+            </div>
+
+            <!-- Graph 2: Action Distribution Over Time -->
+            <div class="chart-container">
+                <div class="chart-title">2. Action Distribution Over Time</div>
+                <div class="chart-subtitle">X: Training steps (0 to 2M) | Y: Percentage of each action (0-100%)</div>
+                <canvas id="actionDistributionChart"></canvas>
+                <div id="actionDistributionError" class="data-unavailable" style="display: none;"></div>
+            </div>
+
+            <!-- Graph 3: Comparative Analysis -->
+            <div class="chart-container">
+                <div class="chart-title">3. Comparative Analysis: Baseline vs Current Configuration</div>
+                <div class="chart-subtitle">X: Training steps (0 to 2M) | Y: Mean episode reward</div>
+                <canvas id="comparativeChart"></canvas>
+                <div id="comparativeError" class="data-unavailable" style="display: none;"></div>
+            </div>
+
+            <!-- Graph 4: Episode Length Distribution -->
+            <div class="chart-container">
+                <div class="chart-title">4. Episode Length Distribution</div>
+                <div class="chart-subtitle">X: Episode length (steps) | Y: Frequency (histogram)</div>
+                <canvas id="episodeLengthDistChart"></canvas>
+                <div id="episodeLengthDistError" class="data-unavailable" style="display: none;"></div>
+            </div>
+
+            <!-- Graph 6: Stamina Management Over Episode Timeline -->
+            <div class="chart-container">
+                <div class="chart-title">6. Stamina Management Over Episode Timeline</div>
+                <div class="chart-subtitle">X: Episode timestep (0 to ~850) | Y: Stamina level (0-100)</div>
+                <canvas id="staminaChart"></canvas>
+                <div id="staminaError" class="data-unavailable" style="display: none;"></div>
+            </div>
+
+            <!-- Graph 6: Policy Loss and Value Loss Over Training -->
+            <div class="chart-container">
+                <div class="chart-title">6. Policy Loss and Value Loss Over Training</div>
+                <div class="chart-subtitle">X: Training steps (0 to 2M) | Y: Loss values (dual Y-axis)</div>
+                <canvas id="lossChart"></canvas>
+                <div id="lossError" class="data-unavailable" style="display: none;"></div>
+            </div>
+
+            <!-- Graph 8: Entropy Over Training -->
+            <div class="chart-container">
+                <div class="chart-title">8. Entropy Over Training</div>
+                <div class="chart-subtitle">X: Training steps | Y: Policy entropy</div>
+                <canvas id="entropyChart"></canvas>
+                <div id="entropyError" class="data-unavailable" style="display: none;"></div>
+            </div>
+
+            <!-- Graph 8: Distance Traveled Distribution -->
+            <div class="chart-container">
+                <div class="chart-title">8. Distance Traveled Distribution</div>
+                <div class="chart-subtitle">X: Distance traveled (units) | Y: Frequency (histogram)</div>
+                <canvas id="distanceChart"></canvas>
+                <div id="distanceError" class="data-unavailable" style="display: none;"></div>
+            </div>
+
+            <!-- Graph 10: Reward Component Breakdown Over Time -->
+            <div class="chart-container">
+                <div class="chart-title">10. Reward Component Breakdown Over Time</div>
+                <div class="chart-subtitle">X: Training steps | Y: Reward contribution (stacked area chart)</div>
+                <canvas id="rewardBreakdownChart"></canvas>
+                <div id="rewardBreakdownError" class="data-unavailable" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let charts = {};
+        let currentRunId = null;
+        let allRuns = [];
+
+        // Load runs on page load
+        async function loadRuns() {
+            try {
+                const response = await fetch('/api/runs');
+                allRuns = await response.json();
+                
+                const runSelect = document.getElementById('runSelect');
+                runSelect.innerHTML = '<option value="">Select a training run...</option>';
+                
+                // Filter to training runs only
+                const trainingRuns = allRuns.filter(r => r.mode === 'training');
+                trainingRuns.forEach(run => {
+                    const option = document.createElement('option');
+                    option.value = run.run_id;
+                    option.textContent = `${run.run_id} (${run.timestamps?.start || 'N/A'})`;
+                    runSelect.appendChild(option);
+                });
+                
+                // Auto-select the last (most recent) run
+                if (trainingRuns.length > 0) {
+                    runSelect.value = trainingRuns[0].run_id;
+                    loadRunData(); // Automatically load data for the last run
+                }
+            } catch (error) {
+                console.error('Error loading runs:', error);
+            }
+        }
+
+        async function loadRunData() {
+            const runSelect = document.getElementById('runSelect');
+            currentRunId = runSelect.value;
+            
+            if (!currentRunId) {
+                return;
+            }
+            
+            // Load all graphs
+            await Promise.all([
+                loadTrainingCurve(),
+                loadActionDistribution(),
+                loadComparative(),
+                loadEpisodeLengthDist(),
+                loadStamina(),
+                loadLoss(),
+                loadEntropy(),
+                loadDistance(),
+                loadRewardBreakdown()
+            ]);
+        }
+
+        async function loadTrainingCurve() {
+            const errorDiv = document.getElementById('trainingCurveError');
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/analysis/training-curve/${currentRunId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (charts.trainingCurve) {
+                    charts.trainingCurve.destroy();
+                }
+                
+                charts.trainingCurve = new Chart(
+                    document.getElementById('trainingCurveChart'),
+                    {
+                        type: 'line',
+                        data: {
+                            datasets: [{
+                                label: 'Mean Episode Reward',
+                                data: data.steps.map((step, i) => ({ x: step, y: data.rewards[i] })),
+                                borderColor: 'rgb(54, 162, 235)',
+                                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                                tension: 0.1,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: true },
+                                title: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    title: { display: true, text: 'Training Steps' },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return (value / 1000000).toFixed(1) + 'M';
+                                        }
+                                    }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Mean Episode Reward' },
+                                    beginAtZero: false
+                                }
+                            }
+                        }
+                    }
+                );
+            } catch (error) {
+                errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${error.message}<br><small>This graph requires TrainingLogger.cs to log stamina_trajectories.json during training. Run a new training session with the updated logging code.</small>`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function loadActionDistribution() {
+            const errorDiv = document.getElementById('actionDistributionError');
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/analysis/action-distribution/${currentRunId}`);
+                const result = await response.json();
+                
+                if (result.error) {
+                    errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${result.message || result.error}<br>
+                        <small>Available final values: Idle=${result.final_values?.idle?.toFixed(2) || 'N/A'}%, 
+                        Jump=${result.final_values?.jump?.toFixed(2) || 'N/A'}%, 
+                        Jog=${result.final_values?.jog?.toFixed(2) || 'N/A'}%, 
+                        Sprint=${result.final_values?.sprint?.toFixed(2) || 'N/A'}%, 
+                        Roll=${result.final_values?.roll?.toFixed(2) || 'N/A'}%</small>`;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Data format: {data: [{step, jump, jog, sprint, roll, idle}, ...]}
+                const dataPoints = result.data || [];
+                if (dataPoints.length === 0) {
+                    throw new Error("No data points available");
+                }
+                
+                if (charts.actionDistribution) {
+                    charts.actionDistribution.destroy();
+                }
+                
+                charts.actionDistribution = new Chart(
+                    document.getElementById('actionDistributionChart'),
+                    {
+                        type: 'line',
+                        data: {
+                            datasets: [
+                                {
+                                    label: 'Idle',
+                                    data: dataPoints.map(d => ({ x: d.step, y: d.idle })),
+                                    borderColor: 'rgb(128, 128, 128)',
+                                    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+                                    tension: 0.1
+                                },
+                                {
+                                    label: 'Jump',
+                                    data: dataPoints.map(d => ({ x: d.step, y: d.jump })),
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                    tension: 0.1
+                                },
+                                {
+                                    label: 'Jog',
+                                    data: dataPoints.map(d => ({ x: d.step, y: d.jog })),
+                                    borderColor: 'rgb(54, 162, 235)',
+                                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                                    tension: 0.1
+                                },
+                                {
+                                    label: 'Sprint',
+                                    data: dataPoints.map(d => ({ x: d.step, y: d.sprint })),
+                                    borderColor: 'rgb(255, 159, 64)',
+                                    backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                                    tension: 0.1
+                                },
+                                {
+                                    label: 'Roll',
+                                    data: dataPoints.map(d => ({ x: d.step, y: d.roll })),
+                                    borderColor: 'rgb(75, 192, 192)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                    tension: 0.1
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: true }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    title: { display: true, text: 'Training Steps' },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return (value / 1000000).toFixed(1) + 'M';
+                                        }
+                                    }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Percentage (%)' },
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        }
+                    }
+                );
+            } catch (error) {
+                errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${error.message}<br><small>This graph requires TrainingLogger.cs to log stamina_trajectories.json during training. Run a new training session with the updated logging code.</small>`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function loadComparative() {
+            const errorDiv = document.getElementById('comparativeError');
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/analysis/comparative/${currentRunId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (charts.comparative) {
+                    charts.comparative.destroy();
+                }
+                
+                const colors = ['rgb(54, 162, 235)', 'rgb(255, 99, 132)', 'rgb(75, 192, 192)', 'rgb(255, 159, 64)', 'rgb(153, 102, 255)'];
+                
+                charts.comparative = new Chart(
+                    document.getElementById('comparativeChart'),
+                    {
+                        type: 'line',
+                        data: {
+                            datasets: data.runs.map((run, idx) => ({
+                                label: run.run_id,
+                                data: run.steps.map((step, i) => ({ x: step, y: run.rewards[i] })),
+                                borderColor: colors[idx % colors.length],
+                                backgroundColor: colors[idx % colors.length] + '20',
+                                tension: 0.1,
+                                fill: false
+                            }))
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: true }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    title: { display: true, text: 'Training Steps' },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return (value / 1000000).toFixed(1) + 'M';
+                                        }
+                                    }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Mean Episode Reward' },
+                                    beginAtZero: false
+                                }
+                            }
+                        }
+                    }
+                );
+            } catch (error) {
+                errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${error.message}<br><small>This graph requires TrainingLogger.cs to log stamina_trajectories.json during training. Run a new training session with the updated logging code.</small>`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function loadEpisodeLengthDist() {
+            const errorDiv = document.getElementById('episodeLengthDistError');
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/analysis/episode-length-dist/${currentRunId}`);
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.message || result.error);
+                }
+                
+                // Data format: {episodes: [{episodeNumber, stepCount, length, maxDistance, success}, ...]}
+                const episodes = result.episodes || [];
+                if (episodes.length === 0) {
+                    throw new Error("No episode data available");
+                }
+                
+                // Check if this is TensorBoard checkpoint data (few data points, stepCount aligned to intervals)
+                // vs individual episode data (many data points, stepCount varies)
+                const isCheckpointData = episodes.length < 200 && 
+                                         episodes.some(e => e.stepCount % 20000 === 0);
+                
+                if (isCheckpointData) {
+                    // TensorBoard checkpoint data: show as time series (mean episode length over training)
+                    if (charts.episodeLengthDist) {
+                        charts.episodeLengthDist.destroy();
+                    }
+                    
+                    charts.episodeLengthDist = new Chart(
+                        document.getElementById('episodeLengthDistChart'),
+                        {
+                            type: 'line',
+                            data: {
+                                datasets: [{
+                                    label: 'Mean Episode Length',
+                                    data: episodes.map(e => ({ x: e.stepCount, y: e.length })),
+                                    borderColor: 'rgb(75, 192, 192)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                    tension: 0.1,
+                                    fill: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { display: true },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return `Mean Length: ${context.parsed.y.toFixed(2)} steps`;
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        type: 'linear',
+                                        title: { display: true, text: 'Training Steps' },
+                                        ticks: {
+                                            callback: function(value) {
+                                                return (value / 1000000).toFixed(1) + 'M';
+                                            }
+                                        }
+                                    },
+                                    y: {
+                                        title: { display: true, text: 'Mean Episode Length (steps)' },
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        }
+                    );
+                } else {
+                    // Individual episode data: show as histogram
+                    // Extract lengths and separate by success/failure
+                    const successLengths = episodes.filter(e => e.success).map(e => e.length);
+                    const failureLengths = episodes.filter(e => !e.success).map(e => e.length);
+                    
+                    if (charts.episodeLengthDist) {
+                        charts.episodeLengthDist.destroy();
+                    }
+                    
+                    // Create histogram bins
+                    const maxLength = Math.max(...episodes.map(e => e.length));
+                    const binSize = Math.ceil(maxLength / 20);
+                    const bins = {};
+                    const successBins = {};
+                    const failureBins = {};
+                    
+                    episodes.forEach(ep => {
+                        const bin = Math.floor(ep.length / binSize) * binSize;
+                        bins[bin] = (bins[bin] || 0) + 1;
+                        if (ep.success) {
+                            successBins[bin] = (successBins[bin] || 0) + 1;
+                        } else {
+                            failureBins[bin] = (failureBins[bin] || 0) + 1;
+                        }
+                    });
+                    
+                    const binLabels = Object.keys(bins).map(Number).sort((a, b) => a - b);
+                    
+                    charts.episodeLengthDist = new Chart(
+                        document.getElementById('episodeLengthDistChart'),
+                        {
+                            type: 'bar',
+                            data: {
+                                labels: binLabels.map(b => `${b}-${b + binSize}`),
+                                datasets: [
+                                    {
+                                        label: 'Success Episodes',
+                                        data: binLabels.map(b => successBins[b] || 0),
+                                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                                    },
+                                    {
+                                        label: 'Failure Episodes',
+                                        data: binLabels.map(b => failureBins[b] || 0),
+                                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { display: true }
+                                },
+                                scales: {
+                                    x: {
+                                        title: { display: true, text: 'Episode Length (steps)' }
+                                    },
+                                    y: {
+                                        title: { display: true, text: 'Frequency' },
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        }
+                    );
+                }
+            } catch (error) {
+                errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${error.message}<br><small>This graph requires TrainingLogger.cs to log stamina_trajectories.json during training. Run a new training session with the updated logging code.</small>`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function loadStamina() {
+            const errorDiv = document.getElementById('staminaError');
+            errorDiv.style.display = 'none';
+            
+            try {
+                // Fetch stamina trajectories, episode data, and reward components
+                const [staminaResponse, episodeResponse, rewardResponse] = await Promise.all([
+                    fetch(`/api/analysis/stamina/${currentRunId}`),
+                    fetch(`/api/analysis/episode-length-dist/${currentRunId}`),
+                    fetch(`/api/analysis/reward-breakdown/${currentRunId}`).catch(() => ({ json: () => ({ rewards: [] }) }))
+                ]);
+                
+                const staminaResult = await staminaResponse.json();
+                const episodeResult = await episodeResponse.json();
+                const rewardResult = await rewardResponse.json();
+                
+                if (staminaResult.error) {
+                    throw new Error(staminaResult.message || staminaResult.error);
+                }
+                
+                // Data format: {trajectories: [{episodeNumber, dataPoints: [{timestep, stamina, stepCount}, ...]}, ...]}
+                const trajectories = staminaResult.trajectories || [];
+                if (trajectories.length === 0) {
+                    throw new Error("No stamina trajectory data available");
+                }
+                
+                // Get episode data and reward components
+                const episodes = episodeResult.episodes || [];
+                const rewards = rewardResult.rewards || [];
+                
+                // Create lookup maps
+                const episodeMap = new Map();
+                episodes.forEach(ep => {
+                    episodeMap.set(ep.episodeNumber, ep);
+                });
+                
+                const rewardMap = new Map();
+                rewards.forEach(r => {
+                    rewardMap.set(r.episodeNumber, r);
+                });
+                
+                // Filter and enrich trajectories with episode data and rewards
+                const validTrajectories = trajectories
+                    .filter(traj => traj.dataPoints && traj.dataPoints.length > 0)
+                    .map(traj => {
+                        const epData = episodeMap.get(traj.episodeNumber);
+                        const rewardData = rewardMap.get(traj.episodeNumber);
+                        
+                        // Get reward from reward_components.json (has totalReward field)
+                        const reward = rewardData ? (rewardData.totalReward || 0) : null;
+                        
+                        return {
+                            ...traj,
+                            reward: reward,
+                            episodeLength: epData ? (epData.length || 0) : null
+                        };
+                    })
+                    .filter(traj => traj.reward !== null && traj.reward !== 0); // Only episodes with non-zero reward data
+                
+                if (validTrajectories.length === 0) {
+                    throw new Error("No trajectories with episode performance data available. Make sure reward_components.json exists.");
+                }
+                
+                // Calculate statistics for episode selection
+                const rewardValues = validTrajectories.map(t => t.reward).filter(r => r !== null && r !== 0);
+                
+                if (rewardValues.length === 0) {
+                    throw new Error("All episode rewards are 0. Check if reward_components.json has valid data.");
+                }
+                
+                const meanReward = rewardValues.reduce((a, b) => a + b, 0) / rewardValues.length;
+                const sortedRewards = [...rewardValues].sort((a, b) => a - b);
+                const reward90th = sortedRewards.length > 0 ? sortedRewards[Math.floor(sortedRewards.length * 0.9)] : null;
+                const reward10th = sortedRewards.length > 0 ? sortedRewards[Math.floor(sortedRewards.length * 0.1)] : null;
+                
+                console.log(`[Stamina Chart] Reward stats: mean=${meanReward.toFixed(2)}, 90th=${reward90th?.toFixed(2)}, 10th=${reward10th?.toFixed(2)}, episodes=${validTrajectories.length}`);
+                
+                // Select episodes based on criteria (only performance-based, roll data is dummy)
+                const selectedEpisodes = {
+                    median: null,
+                    highPerf: null,
+                    lowPerf: null
+                };
+                
+                // 1. Median Performance (closest to mean reward) - ONE episode only
+                let closestToMean = null;
+                let minDiff = Infinity;
+                validTrajectories.forEach(traj => {
+                    const diff = Math.abs(traj.reward - meanReward);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestToMean = traj;
+                    }
+                });
+                selectedEpisodes.median = closestToMean; // ONE episode only
+                
+                // 2. High Performance (90th percentile reward)
+                if (reward90th !== null) {
+                    const highPerfCandidates = validTrajectories.filter(t => t.reward >= reward90th);
+                    if (highPerfCandidates.length > 0) {
+                        // Prefer episode closest to 90th percentile
+                        selectedEpisodes.highPerf = highPerfCandidates.reduce((best, curr) => 
+                            Math.abs(curr.reward - reward90th) < Math.abs(best.reward - reward90th) ? curr : best
+                        );
+                    }
+                }
+                
+                // 3. Low Performance (10th percentile reward)
+                if (reward10th !== null) {
+                    const lowPerfCandidates = validTrajectories.filter(t => t.reward <= reward10th);
+                    if (lowPerfCandidates.length > 0) {
+                        // Prefer episode closest to 10th percentile
+                        selectedEpisodes.lowPerf = lowPerfCandidates.reduce((best, curr) => 
+                            Math.abs(curr.reward - reward10th) < Math.abs(best.reward - reward10th) ? curr : best
+                        );
+                    }
+                }
+                
+                // Ensure we don't select the same episode multiple times
+                const usedEpisodes = new Set();
+                if (selectedEpisodes.median) {
+                    usedEpisodes.add(selectedEpisodes.median.episodeNumber);
+                }
+                
+                // If highPerf is same as median, find alternative
+                if (selectedEpisodes.highPerf && usedEpisodes.has(selectedEpisodes.highPerf.episodeNumber)) {
+                    const alternatives = validTrajectories.filter(t => 
+                        !usedEpisodes.has(t.episodeNumber) && t.reward >= reward90th
+                    );
+                    if (alternatives.length > 0) {
+                        selectedEpisodes.highPerf = alternatives.reduce((best, curr) => 
+                            Math.abs(curr.reward - reward90th) < Math.abs(best.reward - reward90th) ? curr : best
+                        );
+                    } else {
+                        selectedEpisodes.highPerf = null;
+                    }
+                }
+                if (selectedEpisodes.highPerf) {
+                    usedEpisodes.add(selectedEpisodes.highPerf.episodeNumber);
+                }
+                
+                // If lowPerf is same as median or highPerf, find alternative
+                if (selectedEpisodes.lowPerf && usedEpisodes.has(selectedEpisodes.lowPerf.episodeNumber)) {
+                    const alternatives = validTrajectories.filter(t => 
+                        !usedEpisodes.has(t.episodeNumber) && t.reward <= reward10th
+                    );
+                    if (alternatives.length > 0) {
+                        selectedEpisodes.lowPerf = alternatives.reduce((best, curr) => 
+                            Math.abs(curr.reward - reward10th) < Math.abs(best.reward - reward10th) ? curr : best
+                        );
+                    } else {
+                        selectedEpisodes.lowPerf = null;
+                    }
+                }
+                
+                // Helper function to normalize timesteps to 0-100% - MUST be sorted and strictly monotonic
+                function normalizeTrajectory(traj) {
+                    if (!traj || !traj.dataPoints || traj.dataPoints.length === 0) {
+                        console.warn('[Stamina] Empty trajectory');
+                        return [];
+                    }
+                    
+                    // Sort by timestep FIRST to ensure proper ordering
+                    const sortedPoints = [...traj.dataPoints]
+                        .filter(dp => dp.timestep !== undefined && dp.timestep !== null)
+                        .sort((a, b) => (a.timestep || 0) - (b.timestep || 0));
+                    
+                    if (sortedPoints.length === 0) {
+                        console.warn('[Stamina] No valid timesteps after filtering');
+                        return [];
+                    }
+                    
+                    const maxTimestep = sortedPoints[sortedPoints.length - 1].timestep;
+                    if (maxTimestep === 0 || maxTimestep === undefined) {
+                        console.warn('[Stamina] Invalid maxTimestep:', maxTimestep);
+                        return [];
+                    }
+                    
+                    // Normalize and ensure STRICTLY monotonic progression (no backwards, no duplicates)
+                    const cleaned = [];
+                    let lastX = -1;
+                    for (const dp of sortedPoints) {
+                        const x = (dp.timestep / maxTimestep) * 100;
+                        // Only add if strictly increasing (no backwards, no duplicates)
+                        if (x > lastX) {
+                            cleaned.push({
+                                x: x,
+                                y: dp.stamina || 0
+                            });
+                            lastX = x;
+                        }
+                    }
+                    
+                    // Final validation: ensure all x values are strictly increasing
+                    for (let i = 1; i < cleaned.length; i++) {
+                        if (cleaned[i].x <= cleaned[i-1].x) {
+                            console.error(`[Stamina] Non-monotonic data detected at index ${i}: ${cleaned[i-1].x} -> ${cleaned[i].x}`);
+                            // Remove the bad point
+                            cleaned.splice(i, 1);
+                            i--; // Re-check this index
+                        }
+                    }
+                    
+                    return cleaned;
+                }
+                
+                // Build datasets - ONE episode per category, ensure no duplicates
+                const datasets = [];
+                const addedEpisodeNumbers = new Set();
+                
+                console.log('[Stamina] Selected episodes:', {
+                    median: selectedEpisodes.median?.episodeNumber,
+                    highPerf: selectedEpisodes.highPerf?.episodeNumber,
+                    lowPerf: selectedEpisodes.lowPerf?.episodeNumber
+                });
+                
+                // 1. Median Performance - Solid blue, thicker line (ONE episode only)
+                if (selectedEpisodes.median) {
+                    const epNum = selectedEpisodes.median.episodeNumber;
+                    if (addedEpisodeNumbers.has(epNum)) {
+                        console.warn(`[Stamina] Skipping median episode ${epNum} - already added`);
+                    } else {
+                        const normalized = normalizeTrajectory(selectedEpisodes.median);
+                        if (normalized.length > 0) {
+                            console.log(`[Stamina] Adding median episode ${epNum} with ${normalized.length} points`);
+                            datasets.push({
+                                label: `Median Performance (Reward: ${selectedEpisodes.median.reward.toFixed(1)})`,
+                                data: normalized,
+                                borderColor: 'rgb(54, 162, 235)',
+                                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                                tension: 0.1,
+                                fill: false,
+                                pointRadius: 0,
+                                borderWidth: 2.5
+                            });
+                            addedEpisodeNumbers.add(epNum);
+                        }
+                    }
+                }
+                
+                // 2. High Performance - Solid green (ONE episode only)
+                if (selectedEpisodes.highPerf) {
+                    const epNum = selectedEpisodes.highPerf.episodeNumber;
+                    if (!addedEpisodeNumbers.has(epNum)) {
+                        const normalized = normalizeTrajectory(selectedEpisodes.highPerf);
+                        if (normalized.length > 0) {
+                            datasets.push({
+                                label: `High Performance (Reward: ${selectedEpisodes.highPerf.reward.toFixed(1)})`,
+                                data: normalized,
+                                borderColor: 'rgb(75, 192, 192)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                tension: 0.1,
+                                fill: false,
+                                pointRadius: 0,
+                                borderWidth: 1.5
+                            });
+                            addedEpisodeNumbers.add(epNum);
+                        }
+                    }
+                }
+                
+                // 3. Low Performance - Solid red (ONE episode only)
+                if (selectedEpisodes.lowPerf) {
+                    const epNum = selectedEpisodes.lowPerf.episodeNumber;
+                    if (!addedEpisodeNumbers.has(epNum)) {
+                        const normalized = normalizeTrajectory(selectedEpisodes.lowPerf);
+                        if (normalized.length > 0) {
+                            datasets.push({
+                                label: `Low Performance (Reward: ${selectedEpisodes.lowPerf.reward.toFixed(1)})`,
+                                data: normalized,
+                                borderColor: 'rgb(220, 53, 69)',
+                                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                                tension: 0.1,
+                                fill: false,
+                                pointRadius: 0,
+                                borderWidth: 1.5
+                            });
+                            addedEpisodeNumbers.add(epNum);
+                        }
+                    }
+                }
+                
+                
+                console.log(`[Stamina] Final datasets: ${datasets.length} episodes, episode numbers:`, Array.from(addedEpisodeNumbers));
+                
+                if (datasets.length === 0) {
+                    throw new Error("Could not select any episodes based on performance criteria");
+                }
+                
+                if (charts.stamina) {
+                    charts.stamina.destroy();
+                }
+                
+                charts.stamina = new Chart(
+                    document.getElementById('staminaChart'),
+                    {
+                        type: 'line',
+                        data: { datasets: datasets },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { 
+                                    display: true,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    title: { display: true, text: 'Episode Progress (%)' },
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Stamina Level (0-100)' },
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        }
+                    }
+                );
+            } catch (error) {
+                errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${error.message}<br><small>This graph requires TrainingLogger.cs to log stamina_trajectories.json and episode_data.json during training. Run a new training session with the updated logging code.</small>`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function loadLoss() {
+            const errorDiv = document.getElementById('lossError');
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/analysis/policy-value-loss/${currentRunId}`);
+                const result = await response.json();
+                
+                if (result.error) {
+                    errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${result.message || result.error}<br>
+                        <small>Available final values: Policy Loss=${result.final_values?.policy_loss?.toFixed(6) || 'N/A'}, 
+                        Value Loss=${result.final_values?.value_loss?.toFixed(6) || 'N/A'}</small>`;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Data format: {data: [{step, policy_loss, value_loss}, ...]}
+                const dataPoints = result.data || [];
+                if (dataPoints.length === 0) {
+                    throw new Error("No data points available");
+                }
+                
+                if (charts.loss) {
+                    charts.loss.destroy();
+                }
+                
+                charts.loss = new Chart(
+                    document.getElementById('lossChart'),
+                    {
+                        type: 'line',
+                        data: {
+                            datasets: [
+                                {
+                                    label: 'Policy Loss',
+                                    data: dataPoints.map(d => ({ x: d.step, y: d.policy_loss })),
+                                    borderColor: 'rgb(220, 53, 69)',
+                                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                                    tension: 0.1,
+                                    yAxisID: 'y'
+                                },
+                                {
+                                    label: 'Value Loss',
+                                    data: dataPoints.map(d => ({ x: d.step, y: d.value_loss })),
+                                    borderColor: 'rgb(255, 193, 7)',
+                                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                                    tension: 0.1,
+                                    yAxisID: 'y1'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            plugins: {
+                                legend: { display: true }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    title: { display: true, text: 'Training Steps' },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return (value / 1000000).toFixed(1) + 'M';
+                                        }
+                                    }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    title: { display: true, text: 'Policy Loss' },
+                                    beginAtZero: false
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    title: { display: true, text: 'Value Loss' },
+                                    beginAtZero: false,
+                                    grid: {
+                                        drawOnChartArea: false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+            } catch (error) {
+                errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${error.message}<br><small>This graph requires TrainingLogger.cs to log stamina_trajectories.json during training. Run a new training session with the updated logging code.</small>`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function loadEntropy() {
+            const errorDiv = document.getElementById('entropyError');
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/analysis/entropy/${currentRunId}`);
+                const result = await response.json();
+                
+                if (result.error) {
+                    errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${result.message || result.error}<br>
+                        <small>Available final value: Entropy=${result.final_value?.toFixed(4) || 'N/A'}</small>`;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Data format: {data: [{step, entropy}, ...]}
+                const dataPoints = result.data || [];
+                if (dataPoints.length === 0) {
+                    throw new Error("No data points available");
+                }
+                
+                if (charts.entropy) {
+                    charts.entropy.destroy();
+                }
+                
+                charts.entropy = new Chart(
+                    document.getElementById('entropyChart'),
+                    {
+                        type: 'line',
+                        data: {
+                            datasets: [{
+                                label: 'Policy Entropy',
+                                data: dataPoints.map(d => ({ x: d.step, y: d.entropy })),
+                                borderColor: 'rgb(153, 102, 255)',
+                                backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                                tension: 0.1,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: true }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    title: { display: true, text: 'Training Steps' },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return (value / 1000000).toFixed(1) + 'M';
+                                        }
+                                    }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Policy Entropy' },
+                                    beginAtZero: false
+                                }
+                            }
+                        }
+                    }
+                );
+            } catch (error) {
+                errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${error.message}<br><small>This graph requires TrainingLogger.cs to log stamina_trajectories.json during training. Run a new training session with the updated logging code.</small>`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function loadDistance() {
+            const errorDiv = document.getElementById('distanceError');
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/analysis/distance-dist/${currentRunId}`);
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.message || result.error);
+                }
+                
+                // Data format: {episodes: [{episodeNumber, stepCount, length, maxDistance, success}, ...]}
+                const episodes = result.episodes || [];
+                if (episodes.length === 0) {
+                    throw new Error("No episode data available");
+                }
+                
+                // Check if this is TensorBoard checkpoint data (few data points, stepCount aligned to intervals)
+                const isCheckpointData = episodes.length < 200 && 
+                                         episodes.some(e => e.stepCount % 20000 === 0);
+                
+                if (isCheckpointData) {
+                    // TensorBoard checkpoint data: show as time series (mean max distance over training)
+                    if (charts.distance) {
+                        charts.distance.destroy();
+                    }
+                    
+                    charts.distance = new Chart(
+                        document.getElementById('distanceChart'),
+                        {
+                            type: 'line',
+                            data: {
+                                datasets: [{
+                                    label: 'Mean Max Distance',
+                                    data: episodes.map(e => ({ x: e.stepCount, y: e.maxDistance })),
+                                    borderColor: 'rgb(75, 192, 192)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                    tension: 0.1,
+                                    fill: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { display: true },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return `Mean Max Distance: ${context.parsed.y.toFixed(2)} units`;
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        type: 'linear',
+                                        title: { display: true, text: 'Training Steps' },
+                                        ticks: {
+                                            callback: function(value) {
+                                                return (value / 1000000).toFixed(1) + 'M';
+                                            }
+                                        }
+                                    },
+                                    y: {
+                                        title: { display: true, text: 'Mean Max Distance (units)' },
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        }
+                    );
+                } else {
+                    // Individual episode data: show as histogram
+                    // Extract max distances and separate by success/failure
+                    const distances = episodes.map(e => e.maxDistance);
+                    const successDistances = episodes.filter(e => e.success).map(e => e.maxDistance);
+                    const failureDistances = episodes.filter(e => !e.success).map(e => e.maxDistance);
+                    
+                    if (charts.distance) {
+                        charts.distance.destroy();
+                    }
+                    
+                    // Create histogram bins
+                    const maxDist = Math.max(...distances);
+                    const binSize = Math.ceil(maxDist / 20);
+                    const bins = {};
+                    const successBins = {};
+                    const failureBins = {};
+                    
+                    episodes.forEach(ep => {
+                        const bin = Math.floor(ep.maxDistance / binSize) * binSize;
+                        bins[bin] = (bins[bin] || 0) + 1;
+                        if (ep.success) {
+                            successBins[bin] = (successBins[bin] || 0) + 1;
+                        } else {
+                            failureBins[bin] = (failureBins[bin] || 0) + 1;
+                        }
+                    });
+                    
+                    const binLabels = Object.keys(bins).map(Number).sort((a, b) => a - b);
+                    
+                    charts.distance = new Chart(
+                        document.getElementById('distanceChart'),
+                        {
+                            type: 'bar',
+                            data: {
+                                labels: binLabels.map(b => `${b.toFixed(0)}-${(b + binSize).toFixed(0)}`),
+                                datasets: [
+                                    {
+                                        label: 'Success Episodes',
+                                        data: binLabels.map(b => successBins[b] || 0),
+                                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                                    },
+                                    {
+                                        label: 'Failure Episodes',
+                                        data: binLabels.map(b => failureBins[b] || 0),
+                                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { display: true }
+                                },
+                                scales: {
+                                    x: {
+                                        title: { display: true, text: 'Distance Traveled (units)' }
+                                    },
+                                    y: {
+                                        title: { display: true, text: 'Frequency' },
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        }
+                    );
+                }
+            } catch (error) {
+                errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${error.message}<br><small>This graph requires TrainingLogger.cs to log stamina_trajectories.json during training. Run a new training session with the updated logging code.</small>`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function loadRewardBreakdown() {
+            const errorDiv = document.getElementById('rewardBreakdownError');
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/analysis/reward-breakdown/${currentRunId}`);
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.message || result.error);
+                }
+                
+                // Data format: {rewards: [{episodeNumber, stepCount, progressReward, rollBaseReward, rollStyleBonus, targetReachReward, groundedReward, lowStaminaPenalty, timePenalty, fallPenalty, totalReward}, ...]}
+                const rewards = result.rewards || [];
+                if (rewards.length === 0) {
+                    throw new Error("No reward component data available. This requires TrainingLogger.cs to log reward_components.json during training.");
+                }
+                
+                if (charts.rewardBreakdown) {
+                    charts.rewardBreakdown.destroy();
+                }
+                
+                // Sort by stepCount for time series
+                rewards.sort((a, b) => a.stepCount - b.stepCount);
+                
+                // Downsample data if too many points (reduce visual clutter)
+                let sampledRewards = rewards;
+                if (rewards.length > 100) {
+                    // Sample every Nth point to get ~100 points max
+                    const step = Math.ceil(rewards.length / 100);
+                    sampledRewards = rewards.filter((_, index) => index % step === 0);
+                    // Always include first and last points
+                    if (sampledRewards[sampledRewards.length - 1] !== rewards[rewards.length - 1]) {
+                        sampledRewards.push(rewards[rewards.length - 1]);
+                    }
+                }
+                
+                // Build datasets with proper colors: rewards (blues/greens), penalties (reds/oranges)
+                const datasets = [
+                    // REWARDS (blues, greens, teals - NOT reds/oranges)
+                    {
+                        label: 'Progress Reward',
+                        data: sampledRewards.map(r => ({ 
+                            x: r.stepCount, 
+                            y: r.progressReward || 0
+                        })),
+                        borderColor: 'rgb(54, 162, 235)', // Blue
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        tension: 0.1,
+                        fill: 'origin',
+                        pointRadius: 0, // Hide individual points
+                        order: 1
+                    },
+                    {
+                        label: 'Target Reach Reward',
+                        data: sampledRewards.map(r => ({ x: r.stepCount, y: r.targetReachReward || 0 })),
+                        borderColor: 'rgb(75, 192, 192)', // Teal
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        tension: 0.1,
+                        fill: '+1',
+                        pointRadius: 0, // Hide individual points
+                        order: 2
+                    },
+                    {
+                        label: 'Roll Base Reward',
+                        data: sampledRewards.map(r => ({ x: r.stepCount, y: r.rollBaseReward || 0 })),
+                        borderColor: 'rgb(34, 139, 34)', // Green (was pink/red)
+                        backgroundColor: 'rgba(34, 139, 34, 0.5)',
+                        tension: 0.1,
+                        fill: '+1',
+                        pointRadius: 0, // Hide individual points
+                        order: 3
+                    },
+                    {
+                        label: 'Roll Style Bonus',
+                        data: sampledRewards.map(r => ({ x: r.stepCount, y: r.rollStyleBonus || 0 })),
+                        borderColor: 'rgb(0, 191, 255)', // Cyan (was orange)
+                        backgroundColor: 'rgba(0, 191, 255, 0.5)',
+                        tension: 0.1,
+                        fill: '+1',
+                        pointRadius: 0, // Hide individual points
+                        order: 4
+                    },
+                    {
+                        label: 'Grounded Reward',
+                        data: sampledRewards.map(r => ({ x: r.stepCount, y: r.groundedReward || 0 })),
+                        borderColor: 'rgb(70, 130, 180)', // Steel blue (was purple)
+                        backgroundColor: 'rgba(70, 130, 180, 0.5)',
+                        tension: 0.1,
+                        fill: '+1',
+                        pointRadius: 0, // Hide individual points
+                        order: 5
+                    },
+                    // PENALTIES (reds, oranges, yellows)
+                    {
+                        label: 'Time Penalty',
+                        data: sampledRewards.map(r => ({ x: r.stepCount, y: r.timePenalty || 0 })),
+                        borderColor: 'rgb(255, 140, 0)', // Dark orange
+                        backgroundColor: 'rgba(255, 140, 0, 0.5)',
+                        tension: 0.1,
+                        fill: '+1',
+                        pointRadius: 0, // Hide individual points
+                        order: 6
+                    },
+                    {
+                        label: 'Low Stamina Penalty',
+                        data: sampledRewards.map(r => ({ x: r.stepCount, y: r.lowStaminaPenalty || 0 })),
+                        borderColor: 'rgb(255, 69, 0)', // Red-orange
+                        backgroundColor: 'rgba(255, 69, 0, 0.5)',
+                        tension: 0.1,
+                        fill: '+1',
+                        pointRadius: 0, // Hide individual points
+                        order: 7
+                    },
+                    {
+                        label: 'Fall Penalty',
+                        data: sampledRewards.map(r => ({ x: r.stepCount, y: r.fallPenalty || 0 })),
+                        borderColor: 'rgb(220, 20, 60)', // Crimson red
+                        backgroundColor: 'rgba(220, 20, 60, 0.5)',
+                        tension: 0.1,
+                        fill: '+1',
+                        pointRadius: 0, // Hide individual points
+                        order: 8
+                    }
+                ];
+                
+                charts.rewardBreakdown = new Chart(
+                    document.getElementById('rewardBreakdownChart'),
+                    {
+                        type: 'line',
+                        data: { datasets: datasets },
+                        options: {
+                            responsive: true,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            plugins: {
+                                legend: { 
+                                    display: true,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    title: { display: true, text: 'Training Steps' },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return (value / 1000000).toFixed(1) + 'M';
+                                        }
+                                    }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Reward Contribution' },
+                                    beginAtZero: false
+                                }
+                            }
+                        }
+                    }
+                );
+            } catch (error) {
+                errorDiv.innerHTML = `<strong>Data Unavailable:</strong> ${error.message}<br><small>This graph requires TrainingLogger.cs to log reward_components.json during training. Run a new training session with the updated logging code.</small>`;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // Initialize on page load
+        loadRuns();
+    </script>
+</body>
+</html>
+

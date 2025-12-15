@@ -106,6 +106,54 @@ See [dashboard/README.md](dashboard/README.md) for detailed documentation.
 
 ---
 
+### 📊 `generate_latex_figures.py`
+**Purpose**: Generate LaTeX-ready PDF figures from training run data for inclusion in reports.
+
+Converts training data (JSON files) into publication-quality PDF figures suitable for LaTeX documents. Generates all 10 analysis graphs matching the dashboard visualizations.
+
+**Features**:
+- Generates 10 PDF figures from training run data
+- Automatic data downsampling for large datasets
+- Includes training run ID in figure titles
+- Academic-friendly styling and formatting
+- Exports to `report/[trainingXX...]_figures/` directory
+
+**Usage**:
+```bash
+# Generate figures for a specific training run
+python utils/generate_latex_figures.py training_20251214_155306
+```
+
+**Output**:
+- Creates directory: `report/training_20251214_155306_figures/`
+- Generates 10 PDF files:
+  - `training_curve.pdf` - Cumulative reward over training steps
+  - `action_distribution.pdf` - Action percentages over time
+  - `comparative_analysis.pdf` - Comparison across multiple runs
+  - `roll_usage.pdf` - Roll usage vs style frequency
+  - `episode_length_dist.pdf` - Episode length histogram
+  - `stamina.pdf` - Stamina management over episodes
+  - `loss.pdf` - Policy and value loss over training
+  - `entropy.pdf` - Policy entropy over training
+  - `distance.pdf` - Distance traveled distribution
+  - `reward_breakdown.pdf` - Reward component breakdown
+
+**For Overleaf**:
+1. Run the script to generate PDFs
+2. Upload PDF files to your Overleaf project
+3. Include in LaTeX with: `\includegraphics[width=0.8\textwidth]{filename.pdf}`
+
+**Requirements**:
+- `matplotlib` (for PDF generation)
+- `numpy` (for data processing)
+- Training run must have completed and generated JSON data files
+
+**Note**: Some figures require specific data files:
+- Action distribution, loss, entropy: Requires running `extract_tensorboard_data.py` first
+- Episode length, distance, stamina, reward breakdown: Requires `TrainingLogger.cs` enabled during training
+
+---
+
 ## 🔧 Common Workflows
 
 ### Clean Up Failed Runs
@@ -207,4 +255,5 @@ Make sure you're running from the project root and `src/results/` exists.
 - [Dashboard README](dashboard/README.md) - Detailed dashboard documentation
 - [Main README](../README.md) - Project overview and setup
 - [Training Guide](../TRAINING_LOG.md) - Training experiments and results
+
 

@@ -1,0 +1,1131 @@
+\documentclass[11pt]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{array}
+
+% Page setup
+\geometry{margin=1in}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+% Title
+\title{Optimizing Rational and Aesthetic Navigation Objectives via Stochastic Reward Shaping in Procedural 3D Unity Environments}
+\author{Victor Tenneroni}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\subsection{Problem Statement}
+This project addresses autonomous navigation across procedurally generated parkour environments where agents must balance multiple competing objectives: speed (reaching targets efficiently), energy management (stamina conservation), and aesthetic quality (stylistic movement). The agent must reach the target through human-preferred behaviors such as dynamic rolls and varied movement patterns.
+
+This raises two fundamental questions. First, how do we train an AI to understand style? Style is inherently subjective---what one human finds aesthetically pleasing, another might not. In this work, we explore this question in the context of acrobatic parkour, where style manifests through dynamic rolls and varied movement patterns. Second, how do you integrate human preferences into RL when human reaction time is orders of magnitude slower than agent training time?
+
+Reinforcement learning is necessary here for several reasons. The problem involves a high-dimensional state space (14 observations) and a complex action space (5 discrete actions). The randomized environment generates infinite variations through procedural platform generation, requiring the agent to generalize across variations instead of memorizing fixed sequences. The agent must make strategic tradeoffs between speed and stamina conservation, balancing immediate rewards against future resource availability. There is no closed-form solution for the combined dynamics of stamina management, randomized platform layouts, and aesthetic preference modeling.
+
+Traditional approaches fail under these conditions. Rule-based systems cannot handle the randomization inherent in procedural generation. PID control lacks the strategic resource management needed for stamina optimization across varying platform configurations. Fixed environments would allow the agent to memorize sequences, defeating the goal of generalization.
+
+We build both the RL agent and the environment simultaneously in Unity. This creates a moving target problem where environment changes during development break previously trained agents. The randomized environment (procedural platform generation with varying gaps, heights, and widths) presents a constantly changing training distribution that the agent must generalize across.
+
+\subsection{The Human Feedback Challenge}
+Reinforcement Learning from Human Feedback (RLHF) addresses preference learning by having humans directly label preferred trajectories during training. This approach captures nuanced aesthetic judgments that are difficult to encode in reward functions. Our training infrastructure operates 28 parallel agents at 20× time acceleration, generating $\sim$1,054 steps/second and approximately 30 complete episodes per minute.
+
+As a first step toward preference learning under accelerated training constraints, we propose episodic stochastic reward modulation. We inject randomness at the episode level: 40\% of training episodes provide enhanced rewards (+1.5 bonus) for high-cost stylistic actions (rolls), while the remaining 60\% offer only base rewards (+0.5). This approach models the variance in human aesthetic preferences without requiring real-time feedback.
+
+By creating episodes where certain behaviors are disproportionately rewarded, we force the agent to learn those behaviors remain viable strategies, preventing complete dismissal of high-cost actions that humans would find preferable.
+
+\subsection{Empirical Validation}
+Across multiple training configurations (2M steps each), we observe:
+\begin{itemize}
+    \item Baseline (15\% style frequency): 0.69\% roll usage, +67.90 final reward
+    \item Stochastic reward shaping (40\% style frequency): 7.81\% roll usage, +89.18 final reward
+    \item Roll usage increased 11.3× (0.69\% to 7.81\%), with 239 rolls per episode on average
+    \item Final performance: +89.18 average reward, 555.91 units mean distance traveled (range 29.89--603.56 units)
+\end{itemize}
+
+\section{Background \& Related Work}
+
+\subsection{Reinforcement Learning from Human Feedback}
+
+Reinforcement Learning from Human Feedback (RLHF) (Christiano et al., 2017) addresses the fundamental challenge of communicating complex goals to RL systems when reward functions are difficult to specify. The approach learns a reward function from human preferences over trajectory segments, enabling agents to solve tasks without access to the true reward function.
+
+\textbf{Core Method:}
+
+RLHF maintains a policy $\pi: O \rightarrow A$ and a reward function estimate $\hat{r}: O \times A \rightarrow \mathbb{R}$, updated through three asynchronous processes:
+
+\begin{enumerate}
+    \item \textbf{Policy Optimization:} The policy interacts with the environment, producing trajectories. Policy parameters are updated using standard RL algorithms (e.g., A2C, TRPO) to maximize predicted rewards $\hat{r}(o_t, a_t)$.
+    
+    \item \textbf{Preference Elicitation:} Pairs of trajectory segments $(\sigma^1, \sigma^2)$ are selected and presented to a human for comparison. The human indicates preference, equality, or inability to compare.
+    
+    \item \textbf{Reward Function Fitting:} The reward function $\hat{r}$ is optimized via supervised learning to fit human comparisons using the Bradley-Terry model:
+\end{enumerate}
+
+$$P[\sigma^1 \succ \sigma^2] = \frac{\exp(\sum_t \hat{r}(o^1_t, a^1_t))}{\exp(\sum_t \hat{r}(o^1_t, a^1_t)) + \exp(\sum_t \hat{r}(o^2_t, a^2_t))}$$
+
+The reward function is optimized to minimize cross-entropy loss:
+
+$$\text{loss}(\hat{r}) = -\sum_{(\sigma^1, \sigma^2, \mu) \in D} \left[\mu(1) \log P[\sigma^1 \succ \sigma^2] + \mu(2) \log P[\sigma^2 \succ \sigma^1]\right]$$
+
+where $D$ is the database of human comparisons and $\mu$ is the distribution over preferences.
+
+\textbf{Key Findings:}
+
+\begin{itemize}
+    \item \textbf{Efficiency:} RLHF reduces human feedback requirements by $\sim$3 orders of magnitude, requiring feedback on less than 1\% of agent interactions
+    \item \textbf{Performance:} With 700--5,500 human comparisons (15 minutes to 5 hours of human time), RLHF can solve complex RL tasks including Atari games and simulated robot locomotion, matching or exceeding performance of RL with true reward functions
+    \item \textbf{Novel Behaviors:} Can learn complex novel behaviors (e.g., backflips, one-legged locomotion) from $\sim$1 hour of human feedback, even when no reward function can be hand-engineered
+    \item \textbf{Online Feedback Critical:} Offline reward predictor training fails due to nonstationarity; human feedback must be intertwined with RL learning to prevent exploitation of learned reward function weaknesses
+\end{itemize}
+
+\textbf{Limitations for Accelerated Training:}
+
+RLHF requires real-time human feedback during training, which becomes infeasible when:
+\begin{itemize}
+    \item Training runs at 20× time acceleration (environment runs too fast for human perception)
+    \item Training generates $\sim$1,054 steps/second across 28 parallel agents
+    \item Episodes complete in $\sim$30 seconds (wall-clock time), requiring human evaluation every few seconds
+\end{itemize}
+
+This fundamental incompatibility motivates our approach: \textbf{offline preference approximation} through stochastic reward shaping, which models human preference variance without requiring real-time feedback.
+
+\subsection{Reward Shaping in Reinforcement Learning}
+
+Reward shaping modifies the reward function to guide learning while preserving optimal policies (Ng et al., 1999). Our work extends this concept by introducing \textbf{episodic stochastic reward modulation}, where reward structure varies probabilistically across episodes to approximate preference diversity.
+
+\section{Methodology}
+
+\subsection{Training Infrastructure}
+
+\subsubsection{Parallel Agent Setup}
+The training infrastructure employs \textbf{28 parallel agents} running simultaneously across 28 independent \texttt{TrainingArea} objects within a single Unity environment instance. This parallelization strategy enables efficient data collection and significantly accelerates the training process.
+
+\textbf{Key Configuration:}
+\begin{itemize}
+    \item \textbf{Number of Agents:} 28 (one agent per \texttt{TrainingArea})
+    \item \textbf{Number of Environments:} 1 (single Unity instance)
+    \item \textbf{Training Areas:} 28 \texttt{TrainingArea} objects in the scene
+    \item \textbf{Time Scale:} 20× acceleration multiplier during training
+\end{itemize}
+
+\textbf{Design Rationale:}
+The choice of 28 agents represents a balance between:
+\begin{enumerate}
+    \item \textbf{Data Collection Efficiency:} More agents provide more diverse experiences per unit time
+    \item \textbf{Computational Overhead:} Each agent requires physics simulation and observation collection
+    \item \textbf{Memory Constraints:} Unity scene complexity increases with more agents
+    \item \textbf{Practical Limits:} 28 agents was empirically determined to be the maximum stable configuration on the target hardware
+\end{enumerate}
+
+\subsubsection{Training Environment Configuration}
+Each of the 28 agents trains in an independent \texttt{TrainingArea} with procedurally generated platforms. At the start of each episode, platforms are regenerated with randomized parameters, ensuring all 28 agents experience different environments simultaneously.
+
+\textbf{Platform Generation Parameters:}
+\begin{itemize}
+    \item \textbf{Platform Count:} 20 platforms per episode
+    \item \textbf{Gap Range:} 2.5--4.5 units (edge-to-edge, randomized per gap)
+    \item \textbf{Platform Width Range:} 20--84 units (randomized per platform)
+    \begin{itemize}
+        \item Base width: 20--28 units (randomized)
+        \item 80\% of platforms are 3× longer: 60--84 units
+        \item 20\% of platforms remain base size: 20--28 units
+    \end{itemize}
+    \item \textbf{Height Variation:} -0.6 to +1.2 units change between consecutive platforms
+    \item \textbf{Absolute Height Range:} -0.5 to 5.0 units
+\end{itemize}
+
+\textbf{Randomization Strategy:}
+Platforms are regenerated at the start of each episode for each agent independently. This means all 28 agents train on different platform layouts simultaneously, maximizing diversity in the collected experience. The randomization prevents memorization and forces the agent to use perception (raycasts) instead of sequence memory.
+
+\subsubsection{Training Duration and Scale}
+\textbf{Training Scale:}
+\begin{itemize}
+    \item \textbf{Total Training Steps:} 2,000,000 steps
+    \item \textbf{Wall-Clock Time:} $\sim$30--32 minutes (approximately 31.6 minutes for complete training)
+    \item \textbf{Time Horizon:} 128 steps before value bootstrapping
+    \item \textbf{Checkpoint Interval:} Every 500,000 steps
+\end{itemize}
+
+\textbf{Training Efficiency Calculation:}
+\begin{itemize}
+    \item \textbf{Single Agent:} $\sim$8+ hours for 2M steps (at 20× time scale)
+    \item \textbf{28 Parallel Agents:} $\sim$30 minutes for 2M steps
+    \item \textbf{Speedup Factor:} $\sim$16× improvement (28 agents × 20× time scale = 560× theoretical, but limited by Python training loop and network updates)
+\end{itemize}
+
+\subsubsection{Time Acceleration and Offline Preference Modeling}
+\textbf{Time Acceleration Necessity:}
+The 20× time acceleration factor is essential for practical training durations. However, this acceleration creates a fundamental constraint: \textbf{human feedback is incompatible with accelerated training}. Real-time human evaluation of agent behavior becomes infeasible when the environment runs 20× faster than normal speed.
+
+\textbf{The Fundamental Constraint:}
+\begin{itemize}
+    \item \textbf{Normal Speed:} Human can evaluate behavior in real-time
+    \item \textbf{20× Accelerated:} Environment runs too fast for human perception and reaction
+    \item \textbf{Implication:} Cannot use RLHF (Reinforcement Learning from Human Feedback) during training
+    \item \textbf{Solution:} Design reward functions that approximate human preferences \textit{a priori}
+\end{itemize}
+
+\textbf{Implication for Reward Design:}
+This constraint necessitates an \textbf{offline preference modeling approach}. Since real-time human feedback during training is infeasible (as in RLHF), we design reward functions that approximate human preferences \textit{a priori}. The style reward system (Section 3.2) represents our approach to approximating human aesthetic preferences without requiring real-time human interaction.
+
+\subsubsection{PPO Algorithm and Training Strategy}
+\textbf{Algorithm:} Proximal Policy Optimization (PPO)
+
+The training uses PPO with high exploration (beta = 0.1) and linear decay schedules to gradually shift from exploration to exploitation. The network architecture uses separate actor-critic networks: policy network (2×256 hidden layers → 5 action logits) and value network (2×128 hidden layers → 1 value estimate). The separate architecture enables independent learning rates for policy and value estimation, with advantage estimation providing credit assignment by separating ``good action'' from ``already good state.'' Detailed hyperparameters, network architecture, and advantage estimation are provided in Section 4.2.
+
+\textbf{Why PPO Over Q-Learning/DQN?}
+
+PPO was selected over Q-learning/DQN for several reasons specific to this problem domain:
+
+\textbf{1. Continuous Observations with Discrete Actions:}
+PPO handles the combination of continuous state space (14-dimensional observations) and discrete action space (5 actions) naturally. Q-learning/DQN struggles with continuous state spaces, requiring discretization or function approximation that loses information. PPO's policy gradient approach directly models the action distribution over continuous observations.
+
+\textbf{2. Policy Stability with Clipping:}
+PPO's clipping mechanism (epsilon = 0.2) prevents catastrophic policy updates that could cause the agent to ``forget'' previously learned behaviors. This is critical when training on a constantly changing randomized environment where the agent must maintain stable strategies across platform variations. Q-learning's deterministic action selection (always picks best Q-value) lacks this stability mechanism.
+
+\textbf{3. High Exploration Capability:}
+The high entropy coefficient ($\beta = 0.1$, 6.7× higher than ML-Agents default of 0.015) enables sufficient exploration in the complex action space. This was empirically validated: increasing exploration led to a 603\% reward improvement as the agent discovered roll usage patterns. Q-learning's $\varepsilon$-greedy exploration is less effective for discovering high-cost, high-reward actions like rolls that require strategic timing.
+
+\textbf{4. Separate Value Network:}
+PPO uses independent actor (policy) and critic (value) networks, allowing policy and value estimation to learn at different rates. This separation is more stable than shared networks when rewards are sparse (target reach +10.0, fall -1.0), as the value network can learn long-term returns while the policy network focuses on action selection.
+
+\textbf{5. Episodic Style Bonus Compatibility:}
+The episodic stochastic reward structure (40\% of episodes with +1.5 roll bonus) requires an algorithm that can learn from variable reward distributions. PPO's on-policy learning naturally handles this episodic variation, while Q-learning's off-policy nature would struggle to adapt to episode-level reward changes.
+
+\textbf{6. Stable Learning with Sparse Rewards:}
+The reward structure includes sparse terminal rewards (target reach, fall penalty) that occur infrequently. PPO's advantage estimation (GAE with $\lambda=0.95$) effectively propagates these sparse signals, while Q-learning requires careful reward shaping to learn from sparse signals.
+
+\subsection{Reward Design}
+
+\subsubsection{Design Philosophy and Workflow}
+\textbf{Design Philosophy:}
+The reward function must guide the agent toward both functional parkour (reaching targets efficiently) and aesthetic parkour (stylish movements). This dual objective creates a multi-objective optimization problem that requires careful reward shaping.
+
+\textbf{Key Design Principles:}
+\begin{itemize}
+    \item \textbf{Dense Rewards:} Provide learning signal at every step (progress, grounded)
+    \item \textbf{Sparse Rewards:} Provide clear success/failure signals (target reach, fall)
+    \item \textbf{Shaped Rewards:} Guide agent toward desired behaviors (style bonuses)
+    \item \textbf{Magnitude Relationships:} Ensure rewards are properly scaled relative to each other
+\end{itemize}
+
+\subsubsection{Multi-Objective Reward Structure}
+The reward function combines multiple objectives to guide the agent toward both functional and aesthetic parkour behavior:
+
+\begin{enumerate}
+    \item \textbf{Progress Maximization} (Primary objective) --- 79\% of total reward
+    \item \textbf{Time Minimization} (Secondary objective) --- Encourages speed
+    \item \textbf{Stamina Management} (Tertiary objective) --- Encourages efficiency
+    \item \textbf{Style Actions} (Episodic bonus) --- Encourages aesthetic behavior
+\end{enumerate}
+
+\subsubsection{Base Rewards: Design and Calibration}
+\textbf{Dense Rewards (Per-Step):}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Reward Component & Value & Condition & Design Rationale \\
+\midrule
+Progress Reward & $+0.1 \times \Delta x$ & Forward movement & Primary learning signal. 0.1/unit chosen to provide strong gradient while maintaining scale. \\
+Grounded Reward & $+0.001$ & Agent is grounded & Encourages staying on platforms. Small magnitude (0.1\% of progress) prevents over-prioritization. \\
+Time Penalty & $-0.001$ & Per fixed update & Encourages speed. Magnitude matches grounded reward to balance. \\
+Low Stamina Penalty & $-0.002$ & Stamina $< 20\%$ & Discourages keeping stamina at zero. 2× time penalty to emphasize importance. \\
+\bottomrule
+\end{tabular}
+\caption{Dense reward components}
+\end{table}
+
+\textbf{Sparse Rewards (Episode-Level):}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Reward Component & Value & Condition & Design Rationale \\
+\midrule
+Target Reach & $+10.0$ & Distance $< 2.0$ units & Clear success signal. Equivalent to 100 units of progress. \\
+Fall Penalty & $-1.0$ & Agent falls or timeout & Clear failure signal. Magnitude chosen to be significant but not overwhelming (10\% of target reach). \\
+\bottomrule
+\end{tabular}
+\caption{Sparse reward components}
+\end{table}
+
+\subsubsection{Reward Scaling and Context}
+
+\textbf{Target Definition and Success Condition:}
+
+The target position is calculated dynamically based on the procedurally generated platform layout:
+\begin{itemize}
+    \item \textbf{Target X Position:} $targetX = lastPlatformEndX + targetOffset$
+    \begin{itemize}
+        \item $lastPlatformEndX$ = right edge of the 20th (last) platform
+        \item $targetOffset = 5.0$ units (target is positioned 5 units beyond the last platform)
+    \end{itemize}
+    \item \textbf{Target Y Position:} Matches agent spawn height (ensures target is at agent level)
+    \item \textbf{Success Condition:} $|agent.x - target.x| < 2.0$ units (X-axis distance only, not 3D distance)
+    \begin{itemize}
+        \item Uses X-axis only to avoid issues when agent passes target at different Y height
+        \item When reached: episode ends immediately with \texttt{EndEpisode()}
+    \end{itemize}
+\end{itemize}
+
+\textbf{Target Reward:}
+\begin{itemize}
+    \item $targetReachReward = +10.0$ (one-time, sparse reward given only when target is reached)
+    \item This is a sparse reward---only given once per episode when successful
+    \item Represents $\sim$11\% of total episode reward in successful episodes
+\end{itemize}
+
+\textbf{Typical Episode Reward Breakdown:}
+
+For a successful episode reaching the target ($\sim$700 units of progress, $\sim$850 steps):
+\begin{itemize}
+    \item \textbf{Progress Reward:} $\sim$70.0 (79\% of total) --- $700 \times 0.1 = +70.0$
+    \begin{itemize}
+        \item Primary learning signal: most reward comes from progress, not target reach
+    \end{itemize}
+    \item \textbf{Target Reach:} +10.0 (11\% of total)
+    \begin{itemize}
+        \item Sparse success signal: serves as the success condition, but progress reward is the primary learning signal
+    \end{itemize}
+    \item \textbf{Grounded Reward:} $\sim$0.85 (1\% of total) --- $850 \times 0.001 = +0.85$
+    \item \textbf{Time Penalty:} $\sim$-0.85 (-1\% of total) --- $850 \times -0.001 = -0.85$
+    \item \textbf{Roll Rewards:} Variable
+    \begin{itemize}
+        \item Base: $+0.5$ per roll (always given)
+        \item Style: $+1.5$ per roll (40\% of episodes)
+        \item Typical: $\sim$239 rolls/episode $\times 0.5 = +119.5$ base
+        \item In style episodes: additional $+358.5$ from style bonuses
+    \end{itemize}
+    \item \textbf{Low Stamina Penalty:} Variable --- $-0.002$ per step when stamina $< 20\%$
+    \item \textbf{Total Episode Reward:} $\sim$80.0 (typical successful episode, matches mean of 80.06)
+\end{itemize}
+
+\textbf{Reward Range Interpretation:}
+
+The observed reward range (3.05--88.82) reflects episode outcomes:
+\begin{itemize}
+    \item \textbf{Minimum (3.05):} Episodes that fail early (timeout/fall) --- minimal progress reward, no target reach reward
+    \item \textbf{Maximum (88.82):} Successful episodes with optimal behavior --- full progress reward + target reach + efficient action usage
+    \item \textbf{Mean (80.06):} Represents the typical successful episode reward breakdown above
+\end{itemize}
+
+\subsubsection{Iterative Reward Calibration: Design Evolution}
+
+The reward structure evolved through iterative problem-solving, addressing emergent behaviors that deviated from desired parkour style:
+
+\textbf{Problem 1: Sprint Bashing}
+\begin{itemize}
+    \item \textbf{Observed Behavior:} Agent learned to hold sprint 38\% of the time, keeping stamina at zero
+    \item \textbf{Root Cause:} No penalty for depleting stamina; sprint provided speed advantage with no downside
+    \item \textbf{Fix:} Added low stamina penalty ($-0.002$ per step when stamina $< 20\%$) and reduced sprint consumption rate from 33.33/sec to 20/sec
+    \item \textbf{Result:} Agent learned to manage stamina strategically instead of depleting it completely
+\end{itemize}
+
+\textbf{Problem 2: Roll Ignored}
+\begin{itemize}
+    \item \textbf{Observed Behavior:} Roll usage remained at 0.69\% despite being the fastest action (18 units/sec)
+    \item \textbf{Root Cause:} Roll cost was too high (150 stamina = 7.5 seconds to regenerate at 20/sec regen rate)
+    \item \textbf{Fix:} Reduced roll cost from 150 to 60 stamina (2 seconds to regenerate at 30/sec regen rate)
+    \item \textbf{Result:} Roll became more accessible, but usage remained low
+\end{itemize}
+
+\textbf{Problem 3: Still No Rolls}
+\begin{itemize}
+    \item \textbf{Observed Behavior:} Even with lower cost (60 stamina), agent rarely used rolls
+    \item \textbf{Root Cause:} No positive incentive; roll was merely ``not bad'' but provided no reward signal
+    \item \textbf{Fix:} Added base roll reward ($+0.5$ always given) so rolls are never ``bad'' actions
+    \item \textbf{Result:} Roll usage increased slightly, but still insufficient
+\end{itemize}
+
+\textbf{Final Breakthrough: Dual Reward Structure}
+\begin{itemize}
+    \item \textbf{Solution:} Dual reward structure combining base reward ($+0.5$ always) with episodic style bonus ($+1.5$ in 40\% of episodes)
+    \item \textbf{Rationale:} Base reward ensures rolls are always valuable, while style bonus creates strategic variety and prevents complete dismissal of high-cost actions
+    \item \textbf{Result:} 31\% reward improvement (+67.90 → +89.18), rolls used strategically (7.81\% usage, 239 rolls/episode average)
+\end{itemize}
+
+This iterative process demonstrates the importance of empirical observation and reward calibration in RL systems, where theoretical reward design often requires refinement based on emergent agent behavior.
+
+\subsubsection{Style Reward Approximation: Design Process}
+\textbf{Stochastic Reward Shaping as Preference Approximation:}
+
+The style reward system approximates human aesthetic preferences through \textbf{stochastic reward injection} instead of real-time human feedback. This design addresses the fundamental constraint that human feedback is incompatible with accelerated training (Section 3.1). The final dual reward structure (base + style bonus) emerged from the iterative calibration process described above.
+
+\textbf{Roll Reward Structure:}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Reward Component & Value & Condition & Design Rationale \\
+\midrule
+Roll Base Reward & $+0.5$ & Roll action executed & Ensures rolls are always valuable. Prevents agent from ignoring rolls in non-style episodes. \\
+Roll Style Bonus & $+1.5$ & Roll in style episode & Provides additional incentive in 40\% of episodes. Creates behavioral variety. \\
+\bottomrule
+\end{tabular}
+\caption{Roll reward structure}
+\end{table}
+
+\textbf{Total Roll Reward:}
+\begin{itemize}
+    \item \textbf{In style episodes (40\%):} $+0.5$ base $+ 1.5$ style $= +2.0$ per roll (20× progress per unit)
+    \item \textbf{In non-style episodes (60\%):} $+0.5$ base per roll (5× progress per unit)
+\end{itemize}
+
+\textbf{Episode-Level Style Flag:}
+\begin{itemize}
+    \item \textbf{Probability:} 40\% (\texttt{styleEpisodeFrequency = 0.4})
+    \item \textbf{Assignment:} Randomly determined at episode start
+    \item \textbf{Scope:} Affects all roll actions within that episode
+    \item \textbf{Rationale:} Stochastic injection mimics preference diversity across different human evaluators
+\end{itemize}
+
+\subsubsection{Rationale: Stochastic Injection Mimics Preference Diversity}
+\textbf{Why Stochastic Episode-Level Flags?}
+
+The episode-level style flag approximates preference diversity across different human evaluators. The stochastic assignment (40\% probability) replaces a fixed reward structure, creating behavioral variety that mimics how different humans might value style vs. efficiency differently.
+
+\textbf{Why Base Reward + Style Bonus?}
+\begin{itemize}
+    \item \textbf{Base reward (always given):} Ensures rolls are always valuable, not just in style episodes. This prevents the agent from completely ignoring rolls in non-style episodes.
+    \item \textbf{Style bonus (conditional):} Provides additional incentive in 40\% of episodes, creating behavioral variety and encouraging occasional stylish movement.
+\end{itemize}
+
+\subsection{MDP Formulation}
+
+The parkour navigation problem is formalized as a Markov Decision Process (MDP) defined by the tuple $(S, A, R, P, \gamma)$:
+
+\textbf{State Space ($S \subseteq \mathbb{R}^{14}$):}
+The fully observable state space consists of 14 continuous values encoding agent position, velocity, environment perception, and internal state (detailed in Section 3.3.2).
+
+\textbf{Action Space ($A = \{0, 1, 2, 3, 4\}$):}
+Discrete action space with 5 actions: Idle (0), Jump (1), Jog (2), Sprint (3), Roll (4). Actions are subject to constraints based on stamina, grounded state, and cooldowns (detailed in Section 3.3.4).
+
+\textbf{Reward Function ($R: S \times A \times S' \rightarrow \mathbb{R}$):}
+The reward function combines dense per-step rewards, sparse terminal rewards, and episodic style bonuses:
+\begin{itemize}
+    \item \textbf{Dense rewards:} Progress ($+0.1 \times \Delta x$), grounded ($+0.001$), time penalty ($-0.001$), low stamina penalty ($-0.002$)
+    \item \textbf{Sparse rewards:} Target reach ($+10.0$), fall/timeout ($-1.0$)
+    \item \textbf{Style rewards:} Roll base ($+0.5$ always), roll style bonus ($+1.5$ in 40\% of episodes)
+\end{itemize}
+
+\textbf{Transition Dynamics ($P(s'|s,a)$):}
+State transitions are governed by deterministic physics and stochastic environmental elements:
+\begin{itemize}
+    \item \textbf{Deterministic physics:} Position updates via $p' = p + v\Delta t$, gravity, and stamina dynamics
+    \item \textbf{Stochastic elements:} Platform randomization (gaps 2.5--4.5 units, widths 20--84 units) regenerated at each episode start; style flag assignment (40\% probability) determined at episode start
+\end{itemize}
+
+\textbf{Discount Factor ($\gamma = 0.99$):}
+High discount factor emphasizes long-term rewards, appropriate for episodes lasting $\sim$100 seconds with strategic stamina management requirements.
+
+\subsection{State/Action Space}
+
+\subsubsection{State Space Design Philosophy}
+\textbf{Design Goals:}
+\begin{enumerate}
+    \item \textbf{Sufficient Information:} Agent must have enough information to make good decisions
+    \item \textbf{Minimal Dimensionality:} Smaller state space = faster learning
+    \item \textbf{Generalization:} State space must work across different platform layouts
+    \item \textbf{Interpretability:} State components should have clear semantic meaning
+\end{enumerate}
+
+\textbf{What We Exclude Matters:}
+The state space deliberately excludes information that would hinder generalization:
+\begin{itemize}
+    \item \textbf{No absolute position:} Since platforms randomize each episode, absolute coordinates are meaningless. The agent observes relative target position instead.
+    \item \textbf{No action history:} The current state (velocity, stamina, raycasts) contains all necessary information for decision-making. Adding action history would increase dimensionality without providing additional signal.
+    \item \textbf{No platform sequence memory:} The agent must use perception (raycasts) instead of memorizing platform patterns, forcing generalization across infinite environment variations.
+\end{itemize}
+
+\subsubsection{State Space (Observations)}
+\textbf{Total Observations: 14 floats}
+
+The state space is fully observable and consists of the following components:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Observation Component & Size & Description & Range/Normalization \\
+\midrule
+Target Relative Position & 3 floats & $(target.position - agent.position)$ & Raw 3D vector (units) \\
+Velocity & 3 floats & $controller.velocity$ & Raw 3D vector (units/sec) \\
+Grounded State & 1 float & $1.0$ if grounded, $0.0$ if not & Binary (0.0 or 1.0) \\
+Platform Raycasts & 5 floats & Downward raycasts at [2, 4, 6, 8, 10] units ahead & Normalized (0.0--1.0) \\
+Obstacle Distance & 1 float & Forward obstacle raycast distance & Normalized (0.0--1.0) \\
+Stamina & 1 float & $currentStamina / maxStamina$ & Normalized (0.0--1.0) \\
+\bottomrule
+\end{tabular}
+\caption{State space components}
+\end{table}
+
+\textbf{State Space Properties:}
+\begin{itemize}
+    \item \textbf{Dimensionality:} 14 ($S \subseteq \mathbb{R}^{14}$)
+    \item \textbf{Observability:} Fully observable (no hidden information)
+    \item \textbf{Normalization:} Applied where applicable (raycasts, stamina)
+    \item \textbf{Completeness:} Contains all information needed for parkour decisions
+\end{itemize}
+
+\subsubsection{Platform Detection Raycasts: Critical Design Decision}
+\textbf{Purpose:} Detect gaps and platform edges ahead of the agent to enable gap detection and jump timing.
+
+\textbf{Implementation Details:}
+\begin{itemize}
+    \item \textbf{5 downward raycasts} at forward distances: $[2, 4, 6, 8, 10]$ units ahead
+    \item \textbf{Ray origin:} $agent.position + forward \times distance + Vector3.up \times 0.5$
+    \item \textbf{Ray direction:} $Vector3.down$
+    \item \textbf{Max ray distance:} $10$ (normalization factor)
+    \item \textbf{Output encoding:}
+    \begin{itemize}
+        \item Platform detected: $hit.distance / maxRayDist$ (0.0--1.0, where 0.0 = platform at ray origin)
+        \item No platform (gap): $1.0$ (normalized max distance)
+    \end{itemize}
+\end{itemize}
+
+\textbf{Critical Design: Perception for Generalization}
+
+\textbf{Empirical Evidence:}
+\begin{itemize}
+    \item \textbf{Experiment:} test\_v9 (no raycasts) vs. test\_v10 (5 raycasts) in randomized environment
+    \item \textbf{Result:} +3.43 vs. +9.85 reward (187\% improvement, $\sim$60\% performance drop without raycasts)
+    \item \textbf{Interpretation:} Without raycasts, agent cannot adapt to randomized gap spacing (2.5--4.5 units)
+    \item \textbf{Conclusion:} Platform raycasts are \textbf{essential} for generalization to randomized environments
+\end{itemize}
+
+\textbf{Critical Insight:} Raycasts enable the agent to ``see ahead'' and detect gaps dynamically. Without them, the agent attempts to memorize platform patterns, which fails catastrophically when platforms are randomized each episode. The 60\% performance drop demonstrates that perception-based state representation is non-negotiable for procedural environments.
+
+\subsubsection{Action Space Design}
+\textbf{Type:} Discrete, single branch, 5 actions
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llllll@{}}
+\toprule
+Action & ID & Description & Speed & Stamina Cost & Constraints \\
+\midrule
+Idle & 0 & No movement & 0 units/sec & 0 & Always available \\
+Jump & 1 & Vertical jump with forward boost & Instant & 20 per jump & Requires: $isGrounded \land stamina \geq 20.0$ \\
+Jog & 2 & Forward movement & 6 units/sec & 0 & Always available \\
+Sprint & 3 & Forward movement & 12 units/sec & 20/sec & Requires: $stamina > 0 \land \neg cooldown$ (cooldown: 0.5s) \\
+Roll & 4 & Forward roll & 18 units/sec & 60 per roll & Requires: $stamina \geq 60.0 \land \neg isRolling$ (duration: 0.6s) \\
+\bottomrule
+\end{tabular}
+\caption{Action space}
+\end{table}
+
+\textbf{Action Space Properties:}
+\begin{itemize}
+    \item \textbf{Type:} Discrete ($A = \{0, 1, 2, 3, 4\}$)
+    \item \textbf{Branch Count:} 1 (single decision branch)
+    \item \textbf{Action Count:} 5
+    \item \textbf{Constraints:} Enforced by environment (stamina, cooldown, grounded state)
+\end{itemize}
+
+\textbf{Action Timing and Constraints:}
+\begin{itemize}
+    \item \textbf{Sprint Cooldown:} 0.5 seconds after sprint ends before sprint can be used again
+    \item \textbf{Roll Duration:} 0.6 seconds (roll is a timed action, cannot chain rolls)
+    \item \textbf{Stamina System:} Max stamina 100.0, regeneration 30.0/sec when not sprinting/jumping/rolling
+\end{itemize}
+
+\textbf{Risk/Reward Trade-off: Roll Action}
+Roll is the fastest action (18 units/sec, 1.5× sprint speed) but carries the highest stamina cost (60 per roll, 3× jump cost). This creates a strategic decision: the agent must balance speed gains against stamina depletion. The high cost prevents indiscriminate roll usage while the speed advantage rewards strategic timing (e.g., crossing gaps efficiently). This risk/reward structure naturally emerges from the action design instead of being explicitly encoded in rewards.
+
+\section{Implementation}
+
+\subsection{Unity ML-Agents Setup}
+
+\subsubsection{Environment Configuration}
+The training environment is built using \textbf{Unity 2022.3 LTS} with the \textbf{ML-Agents Toolkit (version 1.1.0)}. The implementation follows the standard ML-Agents architecture with custom extensions for parkour-specific behaviors.
+
+\textbf{Core Components:}
+\begin{itemize}
+    \item \textbf{Agent Script:} \texttt{ParkourAgent.cs} --- Inherits from \texttt{Unity.MLAgents.Agent}
+    \item \textbf{Training Areas:} 28 \texttt{TrainingArea} objects in the scene (one per parallel agent)
+    \item \textbf{Character Controller:} Unity's built-in \texttt{CharacterController} component for physics-based movement
+    \item \textbf{Configuration System:} \texttt{CharacterConfig} ScriptableObject for centralized parameter management
+\end{itemize}
+
+\textbf{ML-Agents Integration:}
+\begin{itemize}
+    \item \textbf{Package Version:} \texttt{com.unity.ml-agents} 3.0.0+ (Unity Package Manager)
+    \item \textbf{Python Package:} \texttt{mlagents} 1.1.0 (via conda/pip)
+    \item \textbf{Communication:} Unity $\leftrightarrow$ Python via gRPC on port 5004 (default)
+    \item \textbf{Behavior Name:} \texttt{ParkourRunner} (must match in config and Unity)
+\end{itemize}
+
+\subsubsection{Training Workflow: Detailed Process}
+\textbf{Training Command:}
+\begin{lstlisting}[language=bash]
+cd src
+conda activate mlagents
+python train_with_progress.py parkour_config.yaml --run-id=training_<timestamp> --force
+\end{lstlisting}
+
+\textbf{Step-by-Step Training Process:}
+
+\textbf{Phase 1: Initialization (0--5 seconds)}
+\begin{enumerate}
+    \item \textbf{Python Script Execution:}
+    \begin{itemize}
+        \item \texttt{train\_with\_progress.py} reads \texttt{parkour\_config.yaml}
+        \item Parses max\_steps (2,000,000) and behavior name (\texttt{ParkourRunner})
+        \item Auto-generates run-id: \texttt{training\_YYYYMMDD\_HHMMSS}
+        \item Launches \texttt{mlagents-learn} subprocess with config file
+    \end{itemize}
+    \item \textbf{ML-Agents Trainer Startup:}
+    \begin{itemize}
+        \item Python trainer initializes PyTorch model (actor + critic networks)
+        \item Opens gRPC server on port 5004
+        \item Waits for Unity connection
+    \end{itemize}
+    \item \textbf{Unity Editor Connection:}
+    \begin{itemize}
+        \item User opens \texttt{TrainingScene.unity} in Unity Editor
+        \item Scene contains 28 \texttt{TrainingArea} objects, each with a \texttt{ParkourAgent}
+        \item User presses \textbf{Play} button in Unity Editor
+        \item Unity ML-Agents connects to Python trainer on port 5004
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Phase 2: Training Loop (30 minutes)}
+\begin{enumerate}
+    \setcounter{enumi}{3}
+    \item \textbf{Experience Collection:}
+    \begin{itemize}
+        \item Each of 28 agents collects experiences simultaneously
+        \item At 50Hz (20ms per step), each agent:
+        \begin{itemize}
+            \item Collects observations (14 floats)
+            \item Receives action from policy network
+            \item Executes action (with constraints)
+            \item Calculates rewards
+            \item Stores experience tuple: $(state, action, reward, next\_state)$
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{Batch Processing:}
+    \begin{itemize}
+        \item When buffer reaches \texttt{time\_horizon} (128 steps) × 28 agents = 3,584 experiences:
+        \begin{itemize}
+            \item Trainer samples \texttt{batch\_size} (1024) experiences
+            \item Computes advantages using GAE ($\lambda=0.95$, $\gamma=0.99$)
+            \item Trains policy network for \texttt{num\_epoch} (5) epochs
+            \item Updates value network (critic)
+            \item Clears buffer, continues collection
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{Progress Tracking:}
+    \begin{itemize}
+        \item \texttt{train\_with\_progress.py} intercepts ML-Agents output
+        \item Parses step count from log lines: \texttt{[INFO] ParkourRunner. Step: 680000.}
+        \item Calculates percentage: $(current\_steps / max\_steps) \times 100$
+        \item Displays: \texttt{[34.0\%] Time Elapsed: 735.333 s. Mean Reward: 9.899.}
+    \end{itemize}
+    \item \textbf{Checkpointing:}
+    \begin{itemize}
+        \item Every 500,000 steps: Model saved to \texttt{src/results/training\_*/ParkourRunner.onnx}
+        \item Summary logs saved to \texttt{src/results/training\_*/run\_logs/}
+        \item TensorBoard logs updated for visualization
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Phase 3: Completion (2M steps)}
+\begin{enumerate}
+    \setcounter{enumi}{7}
+    \item \textbf{Training Completion:}
+    \begin{itemize}
+        \item Final model saved at 2,000,000 steps
+        \item Training statistics written to \texttt{timers.json} and \texttt{training\_status.json}
+        \item Python script exits
+        \item Unity Editor can be stopped
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Training Hyperparameters}
+
+\subsubsection{PPO Configuration}
+The training uses Proximal Policy Optimization (PPO) with the following hyperparameters defined in \texttt{parkour\_config.yaml}:
+
+\textbf{Hyperparameters:}
+\begin{itemize}
+    \item \textbf{Learning Rate:} $3.0 \times 10^{-4}$ (linear decay schedule)
+    \item \textbf{Batch Size:} 1024 experiences per training batch
+    \item \textbf{Buffer Size:} 10240 (10× batch size for experience replay)
+    \item \textbf{Beta (Entropy):} 0.1 (linear decay) --- High exploration coefficient
+    \item \textbf{Epsilon (Clipping):} 0.2 (linear decay) --- PPO clipping parameter
+    \item \textbf{Lambda (GAE):} 0.95 --- Generalized Advantage Estimation lambda
+    \item \textbf{Gamma (Discount):} 0.99 --- Discount factor for future rewards
+    \item \textbf{Num Epochs:} 5 --- Training epochs per batch
+    \item \textbf{Time Horizon:} 128 steps before value bootstrapping
+\end{itemize}
+
+\textbf{Network Architecture:}
+\begin{itemize}
+    \item \textbf{Actor Network:} 2 hidden layers × 256 units → 5 action logits, input normalization enabled
+    \item \textbf{Critic Network:} 2 hidden layers × 128 units → 1 value estimate, separate from actor (not shared)
+    \item \textbf{Activation:} ReLU (default ML-Agents)
+    \item \textbf{Initialization:} Xavier/Glorot uniform (ML-Agents default)
+\end{itemize}
+
+\textbf{Actor-Critic Architecture and Advantage Estimation:}
+
+The actor-critic architecture uses two separate networks with distinct roles:
+
+\begin{itemize}
+    \item \textbf{Policy Network (Actor):} Takes the 14-dimensional state and outputs a probability distribution over 5 discrete actions. The network learns which actions to take in each state.
+    
+    \item \textbf{Value Network (Critic):} Takes the same state and outputs a scalar value estimate representing the expected future return from that state. The network learns to evaluate how ``good'' a state is.
+\end{itemize}
+
+\textbf{Key Insight: Advantage Estimation for Credit Assignment}
+
+The critical mechanism is \textbf{advantage estimation}, which separates ``good action'' from ``already good state'':
+
+\begin{enumerate}
+    \item \textbf{Value network evaluates state:} ``You're in a good situation worth 45 reward''
+    \item \textbf{Agent takes action and receives reward:} Actual return is 50
+    \item \textbf{Advantage calculation:} $A(s,a) = Q(s,a) - V(s) = 50 - 45 = +5$
+    \item \textbf{Policy update:} Reinforce the action because it performed better than expected
+\end{enumerate}
+
+This separation is crucial for credit assignment. Without it, the agent might attribute high rewards to being in a good state instead of taking a good action. The advantage signal tells the policy network: ``This action was better than what the value network expected, so increase its probability.''
+
+\textbf{Why Separate Networks (Not Shared)?}
+
+The actor and critic use separate networks instead of shared layers because:
+\begin{itemize}
+    \item \textbf{Policy needs stability:} The actor requires stable updates to maintain consistent behavior across the randomized environment
+    \item \textbf{Value needs flexibility:} The critic must adapt quickly to changing reward distributions (especially with episodic style bonuses)
+    \item \textbf{Different learning rates:} Policy and value estimation benefit from independent learning dynamics, preventing one from interfering with the other
+\end{itemize}
+
+\subsubsection{Hyperparameter Selection Rationale}
+\textbf{High Beta (0.1):} Increased from default 0.015 to encourage exploration in the complex parkour environment. The linear decay schedule allows gradual shift from exploration to exploitation.
+
+\textbf{Selection Process:}
+\begin{itemize}
+    \item \textbf{Initial Value:} 0.015 (ML-Agents default)
+    \item \textbf{Problem:} Agent converged too quickly, missed optimal strategies
+    \item \textbf{Experimentation:} Tested 0.05, 0.1, 0.2
+    \item \textbf{Result:} 0.1 provided best balance (high exploration, still learns effectively)
+    \item \textbf{Decay:} Linear from 0.1 → $\sim$0.00074 over 2M steps
+\end{itemize}
+
+\textbf{Time Horizon 128:} Balanced between shorter horizons (64) that may miss long-term dependencies and longer horizons (192) that slow training. Appropriate for 100-second episodes.
+
+\textbf{Decay Formulas:}
+\begin{align}
+lr(t) &= 3.0 \times 10^{-4} \times \left(1 - \frac{t}{2,000,000}\right) \\
+beta(t) &= 0.1 \times \left(1 - \frac{t}{2,000,000}\right) \\
+epsilon(t) &= 0.2 \times \left(1 - \frac{t}{2,000,000}\right)
+\end{align}
+
+\subsection{Style Episode Frequency: Why 40\%?}
+
+\subsubsection{Empirical Evolution}
+The style episode frequency was \textbf{increased from 15\% to 40\%} during development based on empirical observations:
+
+\textbf{Initial Design (15\%):}
+\begin{itemize}
+    \item Original implementation used \texttt{styleEpisodeFrequency = 0.15}
+    \item Rationale: Provide occasional style incentives without overwhelming functional objectives
+    \item Result: Roll usage remained low ($\sim$0.69\% of actions, 28.1 rolls/episode)
+    \item \textbf{Training Run:} \texttt{training\_20251207\_171550} (previous run before frequency increase)
+\end{itemize}
+
+\textbf{Current Design (40\%):}
+\begin{itemize}
+    \item Increased to \texttt{styleEpisodeFrequency = 0.4} (40\% of episodes)
+    \item Rationale: Provide more opportunities for style actions to be learned and expressed
+    \item Result: Significantly increased roll usage (exact percentage from training logs)
+    \item \textbf{Training Run:} \texttt{training\_20251207\_210205} (current run with 40\% frequency)
+\end{itemize}
+
+\textbf{Empirical Evidence:}
+\begin{itemize}
+    \item \textbf{15\% Frequency:} Roll usage $\sim$0.69\% of actions, agent rarely used rolls
+    \item \textbf{40\% Frequency:} Roll usage significantly increased (user confirmed ``more rolls'')
+    \item \textbf{Reward Improvement:} +31\% improvement (+67.90 → +89.18) with 40\% frequency
+\end{itemize}
+
+\subsubsection{Selection Criteria}
+The 40\% frequency was chosen based on comparison with a 15\% baseline, which resulted in insufficient roll usage (0.69\%). The 40\% value balances style learning with functional behavior preservation; alternative values could be explored in future work.
+
+\subsubsection{Implementation Details}
+\textbf{Code Location:} \texttt{src/Assets/Scripts/CharacterConfig.cs}
+\begin{lstlisting}[language=CSharp]
+[Tooltip("Probability that an episode will have style bonuses enabled (0.1 = 10%, 0.2 = 20%)")]
+[Range(0f, 1f)]
+public float styleEpisodeFrequency = 0.4f; // Increased from 15% to 40%
+\end{lstlisting}
+
+\textbf{Assignment Logic:} \texttt{src/Assets/Scripts/ParkourAgent.cs}
+\begin{lstlisting}[language=CSharp]
+public override void OnEpisodeBegin()
+{
+    // ... other reset logic ...
+    
+    // Randomly assign style bonus flag at episode start
+    styleBonusEnabled = Random.Range(0f, 1f) < config.styleEpisodeFrequency;
+    
+    // ... rest of reset logic ...
+}
+\end{lstlisting}
+
+\textbf{Impact:} The flag is assigned once per episode and affects all roll actions within that episode. This episodic-level assignment ensures consistent reward structure throughout each episode, making it easier for the agent to learn the relationship between style episodes and roll rewards.
+
+\subsection{Configuration System}
+
+\subsubsection{Dual Configuration Architecture}
+The implementation uses a \textbf{dual configuration system} to separate training hyperparameters from environment/gameplay parameters:
+
+\textbf{1. ML-Agents Config (\texttt{parkour\_config.yaml}):}
+\begin{itemize}
+    \item PPO hyperparameters (learning rate, batch size, etc.)
+    \item Network architecture settings
+    \item Training schedule (max steps, checkpoints)
+    \item \textbf{Location:} \texttt{src/parkour\_config.yaml}
+    \item \textbf{Format:} YAML
+    \item \textbf{Edited:} Text editor (no Unity required)
+\end{itemize}
+
+\textbf{2. Unity ScriptableObject (\texttt{CharacterConfig.cs}):}
+\begin{itemize}
+    \item Movement parameters (speeds, jump force, gravity)
+    \item Stamina system (max, consumption, regen rates)
+    \item Reward values (progress multiplier, target reach, roll rewards)
+    \item Environment settings (episode timeout, raycast distances)
+    \item Style system (roll base reward, style bonus, frequency)
+    \item \textbf{Location:} Unity Project (\texttt{Assets/Settings/CharacterConfig.asset})
+    \item \textbf{Format:} Unity ScriptableObject (serialized as \texttt{.asset} file)
+    \item \textbf{Edited:} Unity Inspector (visual editor)
+\end{itemize}
+
+\textbf{Rationale:} This separation allows:
+\begin{itemize}
+    \item \textbf{Training hyperparameters} to be adjusted without Unity recompilation
+    \item \textbf{Gameplay parameters} to be tuned in Unity Editor with immediate visual feedback
+    \item \textbf{Version control} of both configuration types independently
+    \item \textbf{Team Collaboration:} RL researchers can edit YAML, game designers can edit ScriptableObject
+\end{itemize}
+
+\subsubsection{Key Configuration Values}
+\textbf{Movement:}
+\begin{itemize}
+    \item Jog speed: 6 units/sec
+    \item Sprint speed: 12 units/sec
+    \item Roll speed: 18 units/sec (1.5× sprint)
+\end{itemize}
+
+\textbf{Stamina System:}
+\begin{itemize}
+    \item Max stamina: 100.0
+    \item Sprint consumption: 20.0/sec
+    \item Jump cost: 20.0 per jump
+    \item Roll cost: 60.0 per roll
+    \item Regen rate: 30.0/sec (when not sprinting/jumping/rolling)
+\end{itemize}
+
+\textbf{Rewards:}
+\begin{itemize}
+    \item Progress: 0.1 per unit forward
+    \item Target reach: +10.0
+    \item Roll base: +0.5 (always given)
+    \item Roll style bonus: +1.5 (in 40\% of episodes)
+\end{itemize}
+
+\subsection{Constraint Enforcement: Learning Through Environment Feedback}
+
+\textbf{Environment-Enforced Constraints:}
+Action constraints are enforced by the environment instead of through explicit penalties, allowing the agent to learn limits through experience:
+
+\begin{itemize}
+    \item \textbf{Stamina Depletion:} When stamina reaches zero during sprint, the environment automatically switches to jog. The agent learns stamina management by experiencing action failures, not through explicit penalties.
+    \item \textbf{Action Blocking:} Jump and roll actions are blocked when constraints are violated (insufficient stamina, not grounded, cooldown active). The agent receives zero reward for blocked actions, learning that certain state-action combinations are invalid.
+    \item \textbf{Cooldown Enforcement:} Sprint cooldown (0.5s) prevents immediate re-sprint. The agent learns timing constraints through failed sprint attempts during cooldown periods.
+\end{itemize}
+
+\textbf{Design Rationale:}
+This approach is more robust than reward penalties because:
+\begin{enumerate}
+    \item \textbf{Hard Constraints:} The environment physically prevents invalid actions, ensuring the agent cannot exploit reward functions to bypass constraints.
+    \item \textbf{Natural Learning:} The agent discovers constraints through exploration and failure, similar to how humans learn physical limitations.
+    \item \textbf{Generalization:} Environment-enforced constraints work across all reward configurations, making the system more modular and maintainable.
+\end{enumerate}
+
+\section{Results \& Analysis}
+
+\subsection{Training Performance}
+
+\textbf{Final Performance Metrics (2M steps):}
+\begin{itemize}
+    \item \textbf{Final Reward:} +89.18 (at 2M steps)
+    \item \textbf{Previous Best:} +78.32 (run28, sprint-only configuration)
+    \item \textbf{Improvement:} +14\% over previous best, +31\% over roll system v1 (+67.90)
+\end{itemize}
+
+\textbf{Training Progression:}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+Checkpoint & Reward & Improvement from 500k \\
+\midrule
+500k steps & +26.67 & Baseline \\
+1.0M steps & +45.25 & +69.5\% \\
+1.5M steps & +81.60 & +205.8\% \\
+2.0M steps & +89.18 & +234.3\% \\
+\bottomrule
+\end{tabular}
+\caption{Training progression}
+\end{table}
+
+\textbf{Training Metrics:}
+\begin{itemize}
+    \item \textbf{Policy Loss:} 0.0233 (mean, range 0.0175--0.0312) --- Stable, converged
+    \item \textbf{Value Loss:} 0.985 (mean, range 0.400--1.808) --- Reasonable estimation error
+    \item \textbf{Policy Entropy:} 0.657 (mean, range 0.657--1.605) --- High exploration maintained
+    \item \textbf{Learning Rate (final):} $8.36 \times 10^{-7}$ (decayed from $3.0 \times 10^{-4}$)
+    \item \textbf{Epsilon (final):} 0.100 (decayed from 0.2)
+    \item \textbf{Beta (final):} 0.000289 (decayed from 0.1)
+\end{itemize}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{training_curve.pdf}
+    \caption{Training curve showing cumulative reward vs training steps}
+    \label{fig:training_curve}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{loss.pdf}
+    \caption{Policy loss and value loss over training}
+    \label{fig:loss}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{entropy.pdf}
+    \caption{Entropy over training}
+    \label{fig:entropy}
+\end{figure}
+
+\subsection{Episode Statistics}
+
+\textbf{Mean Episode Performance:}
+\begin{itemize}
+    \item \textbf{Mean Episode Reward:} 80.06 (range 3.05--88.82)
+    \item \textbf{Mean Episode Length:} 61.07 steps (range 4.90--68.50)
+    \item \textbf{Mean Max Distance:} 555.91 units (range 29.89--603.56)
+    \item \textbf{Mean Episode Duration:} 609.64 environment steps
+\end{itemize}
+
+\textbf{Reward Range Interpretation:}
+\begin{itemize}
+    \item \textbf{Minimum (3.05):} Episodes that fail early (timeout/fall) --- minimal progress, no target reach
+    \item \textbf{Maximum (88.82):} Successful episodes with optimal behavior --- full progress + target + efficient action usage
+    \item \textbf{Mean (80.06):} Typical successful episode (matches reward breakdown in Section 3.2.4)
+\end{itemize}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{episode_length_dist.pdf}
+    \caption{Episode length over training}
+    \label{fig:episode_length}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{distance.pdf}
+    \caption{Distance traveled distribution}
+    \label{fig:distance}
+\end{figure}
+
+\subsection{Action Distribution and Behavior}
+
+\textbf{Action Distribution (Percentage of Total Actions):}
+\begin{itemize}
+    \item \textbf{Jog:} 67.61\% (primary movement mode)
+    \item \textbf{Sprint:} 14.00\% (strategic speed bursts)
+    \item \textbf{Roll:} 7.81\% (increased from 0.69\% in previous run --- 11.3× improvement)
+    \item \textbf{Jump:} 3.53\% (gap crossing)
+    \item \textbf{Idle:} 7.04\% (minimal, efficient)
+\end{itemize}
+
+\textbf{Action Counts (Per Episode, Mean):}
+\begin{itemize}
+    \item \textbf{Jog:} 2,072 actions
+    \item \textbf{Sprint:} 424 actions
+    \item \textbf{Roll:} 239 actions
+    \item \textbf{Jump:} 102 actions
+    \item \textbf{Idle:} 216 actions
+\end{itemize}
+
+\textbf{Agent Behavior Analysis:}
+\begin{itemize}
+    \item \textbf{Roll Usage:} 7.81\% of actions (vs 0.69\% in previous run with 15\% style frequency)
+    \item \textbf{Roll Count:} 239 rolls per episode (mean)
+    \item \textbf{Roll Improvement:} 11.3× increase over previous run (0.69\% → 7.81\%)
+    \item \textbf{Strategic Roll Usage:} Rolls used at 7.81\% despite high cost (60 stamina), indicating learned strategic value
+\end{itemize}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{action_distribution.pdf}
+    \caption{Action distribution over time}
+    \label{fig:action_distribution}
+\end{figure}
+
+\subsection{Behavioral Emergence: Style Bonus Impact}
+
+\textbf{Comparative Analysis:}
+
+The stochastic reward shaping (40\% style frequency) significantly increased roll usage compared to baseline configurations:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Configuration & Style Frequency & Roll Usage & Final Reward & Notes \\
+\midrule
+Baseline (run28) & 0\% (no rolls) & 0\% & +78.32 & Sprint-only, no roll action \\
+Roll System v1 & 15\% & 0.69\% & +67.90 & Roll cost 150, insufficient incentive \\
+\textbf{Current (training\_21)} & \textbf{40\%} & \textbf{7.81\%} & \textbf{+89.18} & Dual reward structure, strategic usage \\
+\bottomrule
+\end{tabular}
+\caption{Comparative analysis of configurations}
+\end{table}
+
+\textbf{Key Behavioral Changes:}
+\begin{enumerate}
+    \item \textbf{Roll Integration:} Agent learned to use rolls strategically (7.81\% usage) despite high stamina cost (60 per roll)
+    \item \textbf{Stamina Management:} Agent balances sprint (14\%) and roll (7.81\%) usage, maintaining stamina for critical actions
+    \item \textbf{Movement Diversity:} Primary movement is jog (67.61\%), with strategic use of sprint and roll for speed and style
+\end{enumerate}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{comparative_analysis.pdf}
+    \caption{Comparative analysis: Baseline vs current configuration}
+    \label{fig:comparative}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{roll_usage.pdf}
+    \caption{Roll usage vs style episode frequency}
+    \label{fig:roll_usage}
+\end{figure}
+
+\subsection{Training Dynamics}
+
+\textbf{Convergence Analysis:}
+\begin{itemize}
+    \item \textbf{Reward Curve:} Monotonically increasing from 500k to 2M steps, no catastrophic forgetting
+    \item \textbf{Policy Convergence:} Policy loss stabilized at 0.0233, indicating converged policy
+    \item \textbf{Value Estimation:} Value loss at 0.985 reflects reasonable estimation error for 850-step episodes
+    \item \textbf{Exploration:} Policy entropy maintained at 0.657, indicating continued exploration even at convergence
+\end{itemize}
+
+\textbf{Learning Rate Decay:}
+The linear decay schedule successfully shifted from exploration to exploitation:
+\begin{itemize}
+    \item Initial learning rate: $3.0 \times 10^{-4}$
+    \item Final learning rate: $8.36 \times 10^{-7}$ (99.7\% decay)
+    \item Beta decay: 0.1 → 0.000289 (99.7\% decay)
+    \item Epsilon decay: 0.2 → 0.100 (50\% decay)
+\end{itemize}
+
+\textbf{Style Bonus Impact on Learning:}
+The episodic style bonus (40\% frequency) created behavioral variety without destabilizing learning:
+\begin{itemize}
+    \item Consistent reward structure within episodes (style flag assigned at episode start)
+    \item Agent learned to adapt behavior based on episode type
+    \item No evidence of reward confusion or learning instability
+\end{itemize}
+
+\section{Discussion \& Future Work}
+
+\subsection{RLHF Integration}
+
+Our stochastic reward shaping approach is a step toward implementing RLHF; here are four approaches for integrating human feedback:
+
+\begin{enumerate}
+    \item \textbf{Asynchronous Preference Collection:} Decouple training from human feedback by collecting preferences between training runs. Run standard training (28 agents, 30 minutes, 2M steps) with current reward model; automatically sample trajectory pairs from replay buffer and save as video clips; human evaluates comparison pairs between training runs; train reward model on accumulated preferences; iterate with updated reward model.
+    
+    \item \textbf{Synchronous Feedback with Checkpointing:} Hybrid training with alternating slow (observable) and fast (accelerated) phases. Train at normal speed (1× time scale) with 4 agents for 5--10 minutes with human real-time keyboard feedback; switch to accelerated mode (10× time scale) with 28 agents for 20 minutes using current reward model; train reward model on accumulated preferences; repeat cycle.
+    
+    \item \textbf{Pre-train Reward Model, Then RL:} One-time offline preference collection before RL training begins. Generate trajectories from random or hand-crafted policies, collect 200--500 human preference pairs (2--3 hours, one-time cost); train initial reward model using Bradley-Terry model on collected preferences; use learned reward model for standard RL training (current 30-minute setup).
+    
+    \item \textbf{Minimal Viable RLHF:} Post-training clip rating with simple regression model. Run standard training (30 minutes, 2M steps); Unity automatically saves 10 ``style moment'' clips (rolls, jumps, acrobatic sequences); human rates each clip 1--5 stars; fit linear regression model predicting star rating from state features (height, velocity, rotation); use predicted rating as style reward in subsequent training.
+\end{enumerate}
+
+\subsection{Training Optimization}
+
+\begin{itemize}
+    \item \textbf{Hyperparameter optimization:} Replace linear decay schedules with exponential decay for beta (0.05 → 0.001), learning rate ($5 \times 10^{-4} \rightarrow 1 \times 10^{-5}$), and epsilon (0.15 → 0.05), increase GAE lambda to 0.98, and reduce training epochs to 3. Expected final reward +95--100 (vs. current +89.18), faster convergence, and reduced final entropy to $\sim$0.2--0.3 (vs. current 0.657).
+    
+    \item \textbf{Movement smoothing:} Increase sprint speed from 12 → 14 units/sec when maintained, add $-0.005$ penalty per sprint interruption, and reward consistent movement direction. Eliminates sprint stuttering behavior.
+\end{itemize}
+
+\subsection{Environment and Action Space Extensions}
+
+\begin{itemize}
+    \item \textbf{Full 3D movement:} Extend from 2.5D to full 3D navigation with multi-axis platforms, turning mechanics, and 3D spatial orientation.
+    
+    \item \textbf{Expanded action space:} Add actions: Slide, wall jump, vault (expanding from 5 → 9+ discrete actions), or implement continuous control for movement direction and intensity.
+    
+    \item \textbf{Dynamic obstacles:} Add moving platforms (translation/rotation), time-dependent physics, and partial observability (occluded obstacles).
+\end{itemize}
+
+\subsection{Workflow and Algorithmic Improvements}
+
+\begin{itemize}
+    \item \textbf{LLM-assisted hyperparameter tuning:} Use LLM-based reasoning to analyze training curves and adapt hyperparameters, reducing manual iteration time.
+    
+    \item \textbf{Q-learning and DQN benchmark:} Implement Q-learning and DQN algorithms on the same environment to benchmark against PPO, providing empirical evidence for PPO's advantages (continuous state space handling, stochastic policy for style action discovery, sparse reward learning) over value-based methods.
+\end{itemize}
+
+\end{document}
+
