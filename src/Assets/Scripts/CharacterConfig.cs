@@ -1,9 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Centralized configuration file for all character movement, jumping, and gameplay parameters.
-/// This is the ONE place to tweak all character-related values.
-/// </summary>
 [CreateAssetMenu(fileName = "CharacterConfig", menuName = "Parkour/Character Config")]
 public class CharacterConfig : ScriptableObject
 {
@@ -26,17 +22,15 @@ public class CharacterConfig : ScriptableObject
     [Tooltip("Sprint progress threshold before sprint animation activates (0-1)")]
     public float sprintAnimationThreshold = 0.5f;
     
-    
     [Header("=== JUMPING ===")]
     [Tooltip("Vertical jump force applied when jumping (higher = jump higher). Reduced for more horizontal, human-like jumps.")]
-    public float jumpForce = 8f; // Reduced from 12f for more horizontal jumps - max height: ~1.6 units
+    public float jumpForce = 8f;
     
     [Tooltip("Extra forward/horizontal speed boost when jumping (for longer, more horizontal jumps)")]
-    public float jumpForwardBoost = 10f; // Increased from 6f for more horizontal movement
+    public float jumpForwardBoost = 10f;
     
     [Tooltip("How fast jump momentum decays in air (air resistance multiplier)")]
     public float jumpMomentumDecayRate = 2f;
-    
     
     [Header("=== PHYSICS ===")]
     [Tooltip("Gravity force applied per second (negative = downward)")]
@@ -45,11 +39,9 @@ public class CharacterConfig : ScriptableObject
     [Tooltip("Small negative velocity to keep character grounded when on ground")]
     public float groundedVelocityReset = -2f;
     
-    
     [Header("=== GROUND DETECTION ===")]
     [Tooltip("Distance below character to check for ground (in units)")]
     public float groundCheckDistance = 0.1f;
-    
     
     [Header("=== CAMERA ===")]
     [Tooltip("Camera rotation speed multiplier")]
@@ -73,7 +65,6 @@ public class CharacterConfig : ScriptableObject
     [Tooltip("Player vertical look limit in degrees (for first-person mode)")]
     public float playerVerticalLookLimit = 80f;
     
-    
     [Header("=== ANIMATION ===")]
     [Tooltip("Base animation playback speed (1.0 = normal speed)")]
     public float baseAnimationSpeed = 1f;
@@ -81,26 +72,24 @@ public class CharacterConfig : ScriptableObject
     [Tooltip("Maximum animation speed multiplier when sprinting (1.5 = 50% faster)")]
     public float maxSprintAnimationSpeed = 1.5f;
     
-    
     [Header("=== STAMINA SYSTEM ===")]
     [Tooltip("Maximum stamina capacity")]
     public float maxStamina = 100f;
     
     [Tooltip("Stamina consumed per second while sprinting. Reduced from 33.33 to allow stamina to build up for rolls/jumps.")]
-    public float staminaConsumptionRate = 20f; // Reduced from 33.33 - now matches regen rate, allows stamina to build up
+    public float staminaConsumptionRate = 20f;
     
     [Tooltip("Stamina consumed per jump. Increased from 5 to 20 to force agent to conserve stamina for jumps (20% of max stamina).")]
-    public float jumpStaminaCost = 20f; // Increased from 5f - forces agent to maintain ~20% stamina minimum to jump
+    public float jumpStaminaCost = 20f;
     
     [Tooltip("Stamina consumed per roll forward. Should be achievable mid-episode even after some sprinting. Reduced to allow rolls throughout episode.")]
-    public float rollStaminaCost = 60f; // Reduced from 120 to 60 (0.6x max stamina) - achievable even after sprinting
+    public float rollStaminaCost = 60f;
     
     [Tooltip("Stamina regenerated per second when not sprinting/jumping/rolling. Higher than consumption to allow stamina to build up for rolls/jumps.")]
-    public float staminaRegenRate = 30f; // Increased from 20 to 30 - faster regen allows stamina to build up even after sprinting
+    public float staminaRegenRate = 30f;
     
     [Tooltip("Penalty per step when stamina is critically low (< 20%). Discourages keeping stamina at 0.")]
-    public float lowStaminaPenalty = -0.002f; // Small penalty when stamina < 20 (0.2% of total reward per step)
-    
+    public float lowStaminaPenalty = -0.002f;
     
     [Header("=== RL AGENT SETTINGS ===")]
     [Tooltip("Forward progress reward multiplier (reward per unit of forward progress)")]
@@ -129,15 +118,14 @@ public class CharacterConfig : ScriptableObject
     
     [Header("=== STYLE ACTION REWARDS ===")]
     [Tooltip("Base reward for roll actions (always given, encourages roll usage). Should be significant compared to progress reward (0.1/unit).")]
-    public float rollBaseReward = 0.5f; // Base reward for every roll (5x progress per unit, ~0.7% of total episode reward)
+    public float rollBaseReward = 0.5f;
     
     [Tooltip("Style bonus magnitude for roll actions (applied in style episodes, in addition to base reward). Should be substantial to incentivize rolls.")]
-    public float rollStyleBonus = 1.5f; // Style bonus (15x progress per unit, ~2.2% of total episode reward per roll)
+    public float rollStyleBonus = 1.5f;
     
     [Tooltip("Probability that an episode will have style bonuses enabled (0.1 = 10%, 0.2 = 20%)")]
     [Range(0f, 1f)]
-    public float styleEpisodeFrequency = 0.4f; // Increased from 15% to 40% - more episodes with style bonus
-    
+    public float styleEpisodeFrequency = 0.4f;
     
     [Header("=== GAME SETTINGS ===")]
     [Tooltip("Y position threshold for player reset (below this = reset to spawn)")]
@@ -146,4 +134,3 @@ public class CharacterConfig : ScriptableObject
     [Tooltip("Default player spawn position")]
     public Vector3 defaultSpawnPosition = new Vector3(0, 1, 0);
 }
-

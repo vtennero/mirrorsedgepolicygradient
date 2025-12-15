@@ -1,14 +1,10 @@
 using UnityEngine;
 
-/// <summary>
-/// Debug script to help diagnose control mode issues.
-/// Add this to any GameObject to see current state in console.
-/// </summary>
 public class ControlModeDebugger : MonoBehaviour
 {
     void Start()
     {
-        InvokeRepeating(nameof(LogState), 1f, 2f); // Log every 2 seconds
+        InvokeRepeating(nameof(LogState), 1f, 2f);
     }
     
     void LogState()
@@ -48,4 +44,3 @@ public class ControlModeDebugger : MonoBehaviour
         }
     }
 }
-

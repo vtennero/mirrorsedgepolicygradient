@@ -1,17 +1,13 @@
 using UnityEngine;
 using System;
 
-/// <summary>
-/// Diagnostic script to check actual Time.timeScale at runtime.
-/// Add this to any GameObject in the scene to see what time scale is actually active.
-/// </summary>
 public class TimeScaleDiagnostic : MonoBehaviour
 {
     private string debugId;
     
     void Start()
     {
-        // Generate unique debug ID
+
         debugId = System.Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
         
         Debug.Log($"[TIMESCALE-DEBUG-{debugId}] ========== UNITY RUNTIME TIMESCALE CHECK ==========");
@@ -25,7 +21,7 @@ public class TimeScaleDiagnostic : MonoBehaviour
     
     void Update()
     {
-        // Log every 60 frames to see if it changes
+
         if (Time.frameCount % 60 == 0)
         {
             Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Frame {Time.frameCount}: Time.timeScale = {Time.timeScale}, Time.deltaTime = {Time.deltaTime:F6}, Time.realtimeSinceStartup = {Time.realtimeSinceStartup:F2}");
@@ -37,4 +33,3 @@ public class TimeScaleDiagnostic : MonoBehaviour
         Debug.Log($"[TIMESCALE-DEBUG-{debugId}] OnApplicationPause: {pauseStatus}, Time.timeScale = {Time.timeScale}");
     }
 }
-

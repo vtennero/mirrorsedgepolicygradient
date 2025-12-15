@@ -2,10 +2,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 
-/// <summary>
-/// Provides screen flash effects (red for failure, green for success) in demo mode.
-/// Only activates when MLAGENTS_DEMO_MODE=true.
-/// </summary>
 public class DemoModeScreenFlash : MonoBehaviour
 {
     private static DemoModeScreenFlash instance;
@@ -29,10 +25,9 @@ public class DemoModeScreenFlash : MonoBehaviour
         {
             if (instance == null)
             {
-                // Try to find existing instance
+
                 instance = FindObjectOfType<DemoModeScreenFlash>();
                 
-                // If not found, create one
                 if (instance == null)
                 {
                     GameObject go = new GameObject("DemoModeScreenFlash");
@@ -46,7 +41,7 @@ public class DemoModeScreenFlash : MonoBehaviour
     
     void Awake()
     {
-        // Singleton pattern
+
         if (instance != null && instance != this)
         {
             Destroy(gameObject);
@@ -55,10 +50,8 @@ public class DemoModeScreenFlash : MonoBehaviour
         instance = this;
         DontDestroyOnLoad(gameObject);
         
-        // Check demo mode
         CheckDemoMode();
         
-        // Only setup UI if in demo mode
         if (isDemoMode)
         {
             SetupFlashUI();
@@ -67,14 +60,13 @@ public class DemoModeScreenFlash : MonoBehaviour
     
     void CheckDemoMode()
     {
-        // 1. Environment variable (if manually set)
+
         string demoEnv = System.Environment.GetEnvironmentVariable("MLAGENTS_DEMO_MODE");
         isDemoMode = !string.IsNullOrEmpty(demoEnv) && (demoEnv.ToLower() == "true" || demoEnv == "1");
         
-        // 2. Check demo_mode.env file - try multiple paths
         if (!isDemoMode)
         {
-            // Application.dataPath = Assets folder, so go up to project root
+
             string projectRoot = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, ".."));
             string srcFolder = System.IO.Path.Combine(projectRoot, "src");
             
@@ -110,7 +102,6 @@ public class DemoModeScreenFlash : MonoBehaviour
             }
         }
         
-        // 3. Check flag file (legacy method)
         if (!isDemoMode)
         {
             string demoFlagPath = System.IO.Path.Combine(Application.streamingAssetsPath, "demo_mode.flag");
@@ -129,31 +120,27 @@ public class DemoModeScreenFlash : MonoBehaviour
     
     void SetupFlashUI()
     {
-        // Create Canvas
+
         GameObject canvasObj = new GameObject("FlashCanvas");
         canvasObj.transform.SetParent(transform);
         flashCanvas = canvasObj.AddComponent<Canvas>();
         flashCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        flashCanvas.sortingOrder = 9999; // Ensure it's on top
+        flashCanvas.sortingOrder = 9999;
         
-        // Add CanvasScaler for proper scaling
         CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.matchWidthOrHeight = 0.5f;
         
-        // Add GraphicRaycaster (required for UI)
         canvasObj.AddComponent<GraphicRaycaster>();
         
-        // Create Image for flash overlay
         GameObject imageObj = new GameObject("FlashImage");
         imageObj.transform.SetParent(canvasObj.transform, false);
         
         flashImage = imageObj.AddComponent<Image>();
-        flashImage.color = new Color(1f, 1f, 1f, 0f); // Start transparent
-        flashImage.raycastTarget = false; // Don't block input
+        flashImage.color = new Color(1f, 1f, 1f, 0f);
+        flashImage.raycastTarget = false;
         
-        // Make it fill the entire screen
         RectTransform rectTransform = flashImage.GetComponent<RectTransform>();
         rectTransform.anchorMin = Vector2.zero;
         rectTransform.anchorMax = Vector2.one;
@@ -163,9 +150,6 @@ public class DemoModeScreenFlash : MonoBehaviour
         Debug.Log("[DemoModeScreenFlash] Flash UI setup complete");
     }
     
-    /// <summary>
-    /// Flash the screen red (for agent failure/death)
-    /// </summary>
     public void FlashRed()
     {
         if (!isDemoMode || flashImage == null)
@@ -181,9 +165,6 @@ public class DemoModeScreenFlash : MonoBehaviour
         currentFlashCoroutine = StartCoroutine(FlashCoroutine(Color.red));
     }
     
-    /// <summary>
-    /// Flash the screen green (for agent success/reaching target)
-    /// </summary>
     public void FlashGreen()
     {
         if (!isDemoMode || flashImage == null)
@@ -203,13 +184,11 @@ public class DemoModeScreenFlash : MonoBehaviour
     {
         if (flashImage == null) yield break;
         
-        // Set color with transparency
         Color startColor = new Color(flashColor.r, flashColor.g, flashColor.b, 0f);
         Color targetColor = new Color(flashColor.r, flashColor.g, flashColor.b, flashAlpha);
         
-        // Fade in
         float elapsed = 0f;
-        float fadeInTime = flashDuration * 0.3f; // 30% of time to fade in
+        float fadeInTime = flashDuration * 0.3f;
         
         while (elapsed < fadeInTime)
         {
@@ -221,12 +200,10 @@ public class DemoModeScreenFlash : MonoBehaviour
         
         flashImage.color = targetColor;
         
-        // Hold at full opacity
-        yield return new WaitForSeconds(flashDuration * 0.4f); // 40% of time at full
+        yield return new WaitForSeconds(flashDuration * 0.4f);
         
-        // Fade out
         elapsed = 0f;
-        float fadeOutTime = flashDuration * 0.3f; // 30% of time to fade out
+        float fadeOutTime = flashDuration * 0.3f;
         
         while (elapsed < fadeOutTime)
         {
@@ -240,7 +217,3 @@ public class DemoModeScreenFlash : MonoBehaviour
         currentFlashCoroutine = null;
     }
 }
-
-
-
-

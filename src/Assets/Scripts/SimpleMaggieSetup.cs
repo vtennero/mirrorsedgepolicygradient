@@ -4,7 +4,7 @@ public class SimpleMaggieSetup : MonoBehaviour
 {
     void Start()
     {
-        // Instructions for manual setup
+
         Debug.Log("=== MAGGIE SETUP INSTRUCTIONS ===");
         Debug.Log("1. Drag idle.glb from Project into Hierarchy");
         Debug.Log("2. Add CharacterController component to it");
@@ -18,7 +18,7 @@ public class SimpleMaggieSetup : MonoBehaviour
     
     void CreatePlatformsOnly()
     {
-        // Just create the platforms - you handle Maggie manually
+
         for (int i = 0; i < 10; i++)
         {
             GameObject platform = GameObject.CreatePrimitive(PrimitiveType.Cube);

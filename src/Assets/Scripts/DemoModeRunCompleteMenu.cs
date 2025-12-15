@@ -4,10 +4,6 @@ using UnityEngine.EventSystems;
 using Unity.MLAgents;
 using System.Collections;
 
-/// <summary>
-/// Shows a menu with run statistics when an episode completes in demo mode.
-/// Handles pause/resume of inference loop and fadeout effects.
-/// </summary>
 public class DemoModeRunCompleteMenu : MonoBehaviour
 {
     private static DemoModeRunCompleteMenu instance;
@@ -23,25 +19,22 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
     public float menuFadeInDuration = 0.5f;
     
     [Tooltip("Countdown duration before auto-resuming (seconds)")]
-    public float countdownDuration = 10f; // Doubled from 5f to 10f
+    public float countdownDuration = 10f;
     
     private bool isDemoMode = false;
     private bool isPaused = false;
     private ParkourAgent currentAgent;
     private DecisionRequester decisionRequester;
     
-    // UI Components
     private GameObject menuPanel;
     private Image fadeoutImage;
     private Text resultText;
     private Text statsText;
     private Text countdownText;
     
-    // Audio
     private AudioSource audioSource;
-    private System.Random audioRandom; // Separate random instance for audio (not affected by Unity's Random state)
+    private System.Random audioRandom;
     
-    // Stats from last run
     private string lastEndReason = "";
     private float lastEpisodeReward = 0f;
     private float lastEpisodeTime = 0f;
@@ -51,7 +44,7 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
     private int lastSprintCount = 0;
     private int lastIdleCount = 0;
     private int lastRollCount = 0;
-    private float lastRollPercent = 0f; // Roll percentage for style audio threshold
+    private float lastRollPercent = 0f;
     
     public static DemoModeRunCompleteMenu Instance
     {
@@ -73,7 +66,7 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
     
     void Awake()
     {
-        // Singleton pattern
+
         if (instance != null && instance != this)
         {
             Destroy(gameObject);
@@ -92,7 +85,7 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
     
     void CheckDemoMode()
     {
-        // Same logic as other demo mode scripts
+
         string demoEnv = System.Environment.GetEnvironmentVariable("MLAGENTS_DEMO_MODE");
         isDemoMode = !string.IsNullOrEmpty(demoEnv) && (demoEnv.ToLower() == "true" || demoEnv == "1");
         
@@ -129,14 +122,14 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
     
     void SetupMenuUI()
     {
-        // Create Canvas
+
         if (menuCanvas == null)
         {
             GameObject canvasObj = new GameObject("RunCompleteMenuCanvas");
             canvasObj.transform.SetParent(transform);
             menuCanvas = canvasObj.AddComponent<Canvas>();
             menuCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            menuCanvas.sortingOrder = 10000; // Above everything
+            menuCanvas.sortingOrder = 10000;
             
             CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -146,26 +139,24 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             canvasObj.AddComponent<GraphicRaycaster>();
         }
         
-        // Create fadeout overlay with background image
         GameObject fadeoutObj = new GameObject("FadeoutOverlay");
         fadeoutObj.transform.SetParent(menuCanvas.transform, false);
         fadeoutImage = fadeoutObj.AddComponent<Image>();
         
-        // Load background image
         Texture2D bgTexture = LoadBackgroundImage();
         if (bgTexture != null)
         {
             Sprite bgSprite = Sprite.Create(bgTexture, new Rect(0, 0, bgTexture.width, bgTexture.height), new Vector2(0.5f, 0.5f));
             fadeoutImage.sprite = bgSprite;
-            fadeoutImage.type = Image.Type.Simple; // Use Simple to fill the entire area
+            fadeoutImage.type = Image.Type.Simple;
         }
         else
         {
-            // Fallback to black if image not found
+
             fadeoutImage.color = new Color(0f, 0f, 0f, 0f);
         }
         
-        fadeoutImage.color = new Color(1f, 1f, 1f, 0f); // Start transparent (white tint for image)
+        fadeoutImage.color = new Color(1f, 1f, 1f, 0f);
         fadeoutImage.raycastTarget = false;
         
         RectTransform fadeoutRect = fadeoutImage.GetComponent<RectTransform>();
@@ -174,12 +165,11 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         fadeoutRect.sizeDelta = Vector2.zero;
         fadeoutRect.anchoredPosition = Vector2.zero;
         
-        // Create menu panel (centered)
         menuPanel = new GameObject("MenuPanel");
         menuPanel.transform.SetParent(menuCanvas.transform, false);
         
         Image panelBg = menuPanel.AddComponent<Image>();
-        panelBg.color = new Color(0.1f, 0.1f, 0.15f, 0.95f); // Dark blue-grey background
+        panelBg.color = new Color(0.1f, 0.1f, 0.15f, 0.95f);
         
         RectTransform panelRect = menuPanel.GetComponent<RectTransform>();
         panelRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -187,7 +177,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         panelRect.sizeDelta = new Vector2(600f, 500f);
         panelRect.anchoredPosition = Vector2.zero;
         
-        // Add Vertical Layout Group
         VerticalLayoutGroup layout = menuPanel.AddComponent<VerticalLayoutGroup>();
         layout.spacing = 20f;
         layout.padding = new RectOffset(40, 40, 40, 40);
@@ -196,7 +185,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         layout.childControlHeight = false;
         layout.childForceExpandWidth = true;
         
-        // Result text (Success/Failed)
         GameObject resultObj = new GameObject("ResultText");
         resultObj.transform.SetParent(menuPanel.transform, false);
         resultText = resultObj.AddComponent<Text>();
@@ -209,7 +197,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         RectTransform resultRect = resultText.GetComponent<RectTransform>();
         resultRect.sizeDelta = new Vector2(0f, 60f);
         
-        // Stats text
         GameObject statsObj = new GameObject("StatsText");
         statsObj.transform.SetParent(menuPanel.transform, false);
         statsText = statsObj.AddComponent<Text>();
@@ -221,7 +208,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         RectTransform statsRect = statsText.GetComponent<RectTransform>();
         statsRect.sizeDelta = new Vector2(0f, 300f);
         
-        // Countdown text (replaces button)
         GameObject countdownObj = new GameObject("CountdownText");
         countdownObj.transform.SetParent(menuPanel.transform, false);
         countdownText = countdownObj.AddComponent<Text>();
@@ -229,33 +215,28 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         countdownText.fontSize = 36;
         countdownText.fontStyle = FontStyle.Bold;
         countdownText.alignment = TextAnchor.MiddleCenter;
-        countdownText.color = new Color(0.2f, 0.4f, 0.7f, 1f); // Blue-grey Animus color
+        countdownText.color = new Color(0.2f, 0.4f, 0.7f, 1f);
         countdownText.raycastTarget = false;
         
         RectTransform countdownRect = countdownText.GetComponent<RectTransform>();
         countdownRect.sizeDelta = new Vector2(0f, 60f);
         
-        // Hide menu initially
         menuPanel.SetActive(false);
         menuCanvas.gameObject.SetActive(false);
         
-        // Setup audio source
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.playOnAwake = false;
         audioSource.volume = 1f;
-        audioSource.spatialBlend = 0f; // 2D sound (not 3D)
+        audioSource.spatialBlend = 0f;
         audioSource.loop = false;
         
-        // Initialize separate random instance for audio (ensures true randomness, not affected by Unity's Random state)
         audioRandom = new System.Random(System.Environment.TickCount);
         
-        // Ensure GameObject is active (needed for AudioSource to work)
         if (!gameObject.activeSelf)
         {
             gameObject.SetActive(true);
         }
         
-        // Check if AudioListener exists (required for audio playback)
         if (FindObjectOfType<AudioListener>() == null)
         {
             Debug.LogWarning("[DemoModeRunCompleteMenu] No AudioListener found in scene! Audio won't play. Add AudioListener to Main Camera.");
@@ -264,9 +245,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         Debug.Log($"[DemoModeRunCompleteMenu] Menu UI setup complete. AudioSource enabled: {audioSource.enabled}, GameObject active: {gameObject.activeSelf}");
     }
     
-    /// <summary>
-    /// Called by ParkourAgent when episode ends in demo mode.
-    /// </summary>
     public void OnEpisodeComplete(ParkourAgent agent, string endReason, float episodeReward, float episodeTime, 
         float maxDistance, int jumpCount, int forwardCount, int sprintCount, int idleCount, int rollCount)
     {
@@ -275,7 +253,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             return;
         }
         
-        // Store stats
         currentAgent = agent;
         lastEndReason = endReason;
         lastEpisodeReward = episodeReward;
@@ -287,19 +264,16 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         lastIdleCount = idleCount;
         lastRollCount = rollCount;
         
-        // Find DecisionRequester to pause
         decisionRequester = agent.GetComponent<DecisionRequester>();
         
-        // Start fadeout and menu sequence
         StartCoroutine(FadeoutAndShowMenu());
     }
     
     IEnumerator FadeoutAndShowMenu()
     {
-        // Wait a tiny bit to let EndEpisode() complete
+
         yield return new WaitForSecondsRealtime(0.1f);
         
-        // Pause inference (after EndEpisode has been called)
         if (decisionRequester != null)
         {
             decisionRequester.enabled = false;
@@ -307,19 +281,14 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             Debug.Log("[DemoModeRunCompleteMenu] Paused DecisionRequester");
         }
         
-        // DON'T pause time scale - it breaks UI input
-        // Just pause DecisionRequester to stop inference loop
-        
-        // Enable canvas
         menuCanvas.gameObject.SetActive(true);
         
-        // Fadeout to background image (or black)
         float elapsed = 0f;
         while (elapsed < fadeoutDuration)
         {
-            elapsed += Time.deltaTime; // Use regular deltaTime since timeScale is not 0
+            elapsed += Time.deltaTime;
             float alpha = Mathf.Lerp(0f, 1f, elapsed / fadeoutDuration);
-            // If using sprite, keep white tint; if using color, use black
+
             if (fadeoutImage.sprite != null)
             {
                 fadeoutImage.color = new Color(1f, 1f, 1f, alpha);
@@ -339,15 +308,12 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             fadeoutImage.color = new Color(0f, 0f, 0f, 1f);
         }
         
-        // Update menu text
         UpdateMenuText();
         
-        // Play audio based on result and style threshold (start loading in background)
         bool isSuccess = lastEndReason == "Success";
-        bool hasStyle = lastRollPercent >= 2.0f; // 2% roll threshold for style audio
+        bool hasStyle = lastRollPercent >= 2.0f;
         StartCoroutine(PlayResultAudioCoroutine(isSuccess, hasStyle));
         
-        // Show menu (fade in)
         menuPanel.SetActive(true);
         CanvasGroup panelGroup = menuPanel.GetComponent<CanvasGroup>();
         if (panelGroup == null)
@@ -358,48 +324,44 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         elapsed = 0f;
         while (elapsed < menuFadeInDuration)
         {
-            elapsed += Time.deltaTime; // Use regular deltaTime since timeScale is not 0
+            elapsed += Time.deltaTime;
             float alpha = Mathf.Lerp(0f, 1f, elapsed / menuFadeInDuration);
             panelGroup.alpha = alpha;
             yield return null;
         }
         panelGroup.alpha = 1f;
         
-        // Start countdown
         StartCoroutine(CountdownAndResume());
     }
     
     void UpdateMenuText()
     {
-        // Result text
+
         bool success = lastEndReason == "Success";
         resultText.text = success ? "SUCCESS!" : "FAILED";
         resultText.color = success ? new Color(0.2f, 1f, 0.2f) : new Color(1f, 0.2f, 0.2f);
         
-        // Stats text
         string stats = $"Result: {lastEndReason}\n\n";
         stats += $"Time: {lastEpisodeTime:F2}s\n";
         stats += $"Distance: {lastMaxDistance:F1}m\n";
         stats += $"Reward: {lastEpisodeReward:F2}\n\n";
         stats += $"Actions:\n";
         
-        // Calculate percentages
         int totalActions = lastJumpCount + lastForwardCount + lastSprintCount + lastIdleCount + lastRollCount;
         if (totalActions > 0)
         {
             float jumpPercent = (float)lastJumpCount / totalActions * 100f;
             float forwardPercent = (float)lastForwardCount / totalActions * 100f;
             float sprintPercent = (float)lastSprintCount / totalActions * 100f;
-            lastRollPercent = (float)lastRollCount / totalActions * 100f; // Store for audio threshold check
+            lastRollPercent = (float)lastRollCount / totalActions * 100f;
             float idlePercent = (float)lastIdleCount / totalActions * 100f;
             
             stats += $"  Jumps: {jumpPercent:F1}%\n";
             stats += $"  Forward: {forwardPercent:F1}%\n";
             stats += $"  Sprint: {sprintPercent:F1}%\n";
-            stats += $"  Roll: {lastRollPercent:F1}%\n"; // Roll percentage display
+            stats += $"  Roll: {lastRollPercent:F1}%\n";
             stats += $"  Idle: {idlePercent:F1}%\n\n";
             
-            // Add style indicator if roll percentage is significant
             if (lastRollPercent >= 2.0f)
             {
                 stats += $"Style: {lastRollPercent:F1}% rolls ✨";
@@ -424,13 +386,12 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             yield return null;
         }
         
-        // Auto-resume
         StartCoroutine(FadeinAndResume());
     }
     
     IEnumerator FadeinAndResume()
     {
-        // Fade out menu
+
         CanvasGroup panelGroup = menuPanel.GetComponent<CanvasGroup>();
         if (panelGroup != null)
         {
@@ -445,14 +406,13 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         }
         menuPanel.SetActive(false);
         
-        // Fade in from background (or black)
-        float fadeInDuration = fadeoutDuration * 0.5f; // Faster fade in
+        float fadeInDuration = fadeoutDuration * 0.5f;
         float fadeElapsed = 0f;
         while (fadeElapsed < fadeInDuration)
         {
             fadeElapsed += Time.deltaTime;
             float alpha = Mathf.Lerp(1f, 0f, fadeElapsed / fadeInDuration);
-            // If using sprite, keep white tint; if using color, use black
+
             if (fadeoutImage.sprite != null)
             {
                 fadeoutImage.color = new Color(1f, 1f, 1f, alpha);
@@ -472,7 +432,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             fadeoutImage.color = new Color(0f, 0f, 0f, 0f);
         }
         
-        // Resume inference
         if (decisionRequester != null)
         {
             decisionRequester.enabled = true;
@@ -480,22 +439,17 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             Debug.Log("[DemoModeRunCompleteMenu] Resumed DecisionRequester");
         }
         
-        // Manually trigger new episode
         if (currentAgent != null)
         {
             currentAgent.OnEpisodeBegin();
         }
         
-        // Hide canvas
         menuCanvas.gameObject.SetActive(false);
     }
     
-    /// <summary>
-    /// Loads the background image from Assets/UI/backg01.jpg
-    /// </summary>
     Texture2D LoadBackgroundImage()
     {
-        // Try multiple paths
+
         string[] possiblePaths = {
             System.IO.Path.Combine(Application.dataPath, "UI", "backg01.jpg"),
             System.IO.Path.Combine(Application.dataPath, "Assets", "UI", "backg01.jpg"),
@@ -524,7 +478,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             }
         }
         
-        // Try loading as resource (if in Resources folder)
         Texture2D resourceTexture = Resources.Load<Texture2D>("UI/backg01");
         if (resourceTexture != null)
         {
@@ -536,10 +489,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         return null;
     }
     
-    /// <summary>
-    /// Plays a random audio file based on success/failure result and style threshold.
-    /// Uses "successstyle" or "fellstyle" if roll percentage >= 2%, otherwise uses regular "success" or "fell".
-    /// </summary>
     IEnumerator PlayResultAudioCoroutine(bool isSuccess, bool hasStyle)
     {
         if (audioSource == null)
@@ -551,18 +500,17 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         string prefix;
         int randomNum;
         
-        // Use style audio if roll percentage >= 2%, otherwise use regular audio
         if (hasStyle)
         {
             if (isSuccess)
             {
                 prefix = "successstyle";
-                randomNum = audioRandom.Next(1, 7); // 1-6 (inclusive min, exclusive max)
+                randomNum = audioRandom.Next(1, 7);
             }
             else
             {
                 prefix = "fellstyle";
-                randomNum = audioRandom.Next(1, 4); // 1-3 (fellstyle01-03, inclusive min, exclusive max)
+                randomNum = audioRandom.Next(1, 4);
             }
         }
         else
@@ -570,28 +518,25 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             if (isSuccess)
             {
                 prefix = "success";
-                randomNum = audioRandom.Next(1, 7); // 1-6 (inclusive min, exclusive max)
+                randomNum = audioRandom.Next(1, 7);
             }
             else
             {
                 prefix = "fell";
-                randomNum = audioRandom.Next(1, 7); // 1-6 (inclusive min, exclusive max)
+                randomNum = audioRandom.Next(1, 7);
             }
         }
         
-        string fileName = $"{prefix}{randomNum:D2}.mp3"; // success01.mp3, successstyle01.mp3, fellstyle01.mp3, etc.
+        string fileName = $"{prefix}{randomNum:D2}.mp3";
         
         Debug.Log($"[DemoModeRunCompleteMenu] Playing audio: {fileName} (roll%: {lastRollPercent:F1}%, hasStyle: {hasStyle}, isSuccess: {isSuccess}, randomNum: {randomNum})");
         
         yield return StartCoroutine(LoadAndPlayAudio(fileName));
     }
     
-    /// <summary>
-    /// Loads and plays an audio clip from Assets/Audio folder.
-    /// </summary>
     IEnumerator LoadAndPlayAudio(string fileName)
     {
-        // Try multiple paths
+
         string[] possiblePaths = {
             System.IO.Path.Combine(Application.dataPath, "Audio", fileName),
             System.IO.Path.Combine(Application.dataPath, "Assets", "Audio", fileName),
@@ -600,7 +545,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         
         AudioClip clip = null;
         
-        // Try file paths first
         foreach (string path in possiblePaths)
         {
             string fullPath = System.IO.Path.GetFullPath(path);
@@ -627,7 +571,6 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             }
         }
         
-        // Fallback: Try Resources folder
         if (clip == null)
         {
             string resourcePath = $"Audio/{System.IO.Path.GetFileNameWithoutExtension(fileName)}";
@@ -638,10 +581,9 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             }
         }
         
-        // Play the clip if found
         if (clip != null && audioSource != null)
         {
-            // Stop any currently playing audio
+
             if (audioSource.isPlaying)
             {
                 audioSource.Stop();
@@ -651,12 +593,11 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
             audioSource.Play();
             Debug.Log($"[DemoModeRunCompleteMenu] Playing audio: {fileName}, Volume: {audioSource.volume}, IsPlaying: {audioSource.isPlaying}");
             
-            // Double-check it's actually playing after a frame
             yield return null;
             if (!audioSource.isPlaying && clip != null)
             {
                 Debug.LogWarning($"[DemoModeRunCompleteMenu] Audio failed to play! Clip: {clip.name}, Length: {clip.length}, LoadState: {clip.loadState}");
-                // Try PlayOneShot as fallback
+
                 audioSource.PlayOneShot(clip);
             }
         }
@@ -673,4 +614,3 @@ public class DemoModeRunCompleteMenu : MonoBehaviour
         }
     }
 }
-

@@ -9,27 +9,25 @@ using Unity.MLAgents.Policies;
 public class ParkourAgent : Agent
 {
     [Header("Required References")]
-    [SerializeField] private Transform target; // Finish line - MUST BE ASSIGNED IN INSPECTOR
-    [SerializeField] private CharacterController controller; // Auto-finds if not assigned
-    [SerializeField] private TrainingArea trainingArea; // Auto-assigned by TrainingArea script
+    [SerializeField] private Transform target;
+    [SerializeField] private CharacterController controller;
+    [SerializeField] private TrainingArea trainingArea;
     
     [Header("Movement Settings")]
     [Tooltip("Override config values if needed, otherwise uses CharacterConfig")]
-    [SerializeField] private float moveSpeed = -1f; // -1 means use config
-    [SerializeField] private float jumpForce = -1f; // -1 means use config
-    [SerializeField] private float gravity = -1f; // -1 means use config
+    [SerializeField] private float moveSpeed = -1f;
+    [SerializeField] private float jumpForce = -1f;
+    [SerializeField] private float gravity = -1f;
     
     private Vector3 startPos;
     private float episodeTimer;
-    private float lastProgressZ; // Actually tracks X progress (name kept for compatibility)
-    private Vector3 velocity; // For gravity and jumping
-    private int currentAction = 0; // Store current action to apply in FixedUpdate
-    private bool justJumped = false; // Track if we just jumped to apply horizontal boost
+    private float lastProgressZ;
+    private Vector3 velocity;
+    private int currentAction = 0;
+    private bool justJumped = false;
     
-    // Public property for animation sync
     public int CurrentAction => currentAction;
     
-    // Tracking metrics for better diagnostics
     private float episodeReward = 0f;
     private int jumpCount = 0;
     private int forwardActionCount = 0;
@@ -38,37 +36,29 @@ public class ParkourAgent : Agent
     private int rollActionCount = 0;
     private float maxDistanceReached = 0f;
     
-    // Track previous action for sprint cooldown tracking
     private int previousAction = -1;
     
-    // Stamina system
     private float currentStamina = 100f;
     
-    // Sprint cooldown system
-    private float lastSprintEndTime = -1f; // Time when sprint last ended (or -1 if never sprinted)
-    private float sprintCooldownDuration = 0.5f; // Cooldown duration in seconds (0.5s = can't immediately re-sprint)
+    private float lastSprintEndTime = -1f;
+    private float sprintCooldownDuration = 0.5f;
     
-    // Style bonus system (episode-level flag)
-    private bool styleBonusEnabled = false; // Randomly set at episode start (10-20% of episodes)
+    private bool styleBonusEnabled = false;
     
-    // Roll state tracking
     private bool isRolling = false;
     private float rollStartTime = 0f;
-    private const float ROLL_DURATION = 0.6f; // Duration of roll animation/movement (tune as needed)
+    private const float ROLL_DURATION = 0.6f;
     
-    // Training logger tracking
     private int episodeNumber = 0;
-    private int episodeTimestep = 0; // Timestep within current episode (for stamina sampling)
+    private int episodeTimestep = 0;
     
-    // Public property for animation sync (checks if actually sprinting, considering stamina)
     public bool IsSprinting => currentAction == 3 && currentStamina > 0f;
     
-    // Public property for animation sync (checks if currently rolling)
     public bool IsRolling => isRolling;
     
     void OnDestroy()
     {
-        // Flush all remaining data when agent is destroyed (training ends)
+
         if (TrainingLogger.Instance.IsInitialized())
         {
             TrainingLogger.Instance.FlushAll();
@@ -78,7 +68,7 @@ public class ParkourAgent : Agent
     
     public override void Initialize()
     {
-        // TIMESCALE DEBUG: Log actual time scale at initialization
+
         string debugId = System.Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
         Debug.Log($"[TIMESCALE-DEBUG-{debugId}] ========== PARKOURAGENT INITIALIZE ==========");
         Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Debug ID: {debugId}");
@@ -86,10 +76,6 @@ public class ParkourAgent : Agent
         Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Time.fixedDeltaTime: {Time.fixedDeltaTime}");
         Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Time.deltaTime: {Time.deltaTime}");
         
-        // DEMO MODE ONLY: Apply custom time scale for inference/demo viewing
-        // ⚠️ CRITICAL: This ONLY runs in demo mode (MLAGENTS_DEMO_MODE=true)
-        // ⚠️ Training is COMPLETELY UNAFFECTED - this code is skipped during training
-        // ML-Agents doesn't apply engine_settings.time_scale in Editor mode, so we read it manually
         if (IsDemoMode())
         {
             Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Demo mode detected - applying custom time scale");
@@ -103,7 +89,6 @@ public class ParkourAgent : Agent
         Debug.Log($"[TIMESCALE-DEBUG-{debugId}] Time.timeScale AFTER: {Time.timeScale}");
         Debug.Log($"[TIMESCALE-DEBUG-{debugId}] ===========================================");
         
-        // Auto-find CharacterController if not assigned
         if (controller == null)
         {
             controller = GetComponent<CharacterController>();
@@ -113,35 +98,27 @@ public class ParkourAgent : Agent
             }
         }
         
-        // Warn if target not assigned (will be auto-assigned by TrainingArea if in training mode)
         if (target == null && trainingArea == null)
         {
             Debug.LogWarning("ParkourAgent: Target not assigned. If using TrainingArea, this will be auto-assigned. Otherwise, assign manually in Inspector.");
         }
         
-        // Initialize values from config if not overridden
         InitializeFromConfig();
         
         startPos = transform.position;
-        lastProgressZ = startPos.x; // Fixed: track X, not Z
+        lastProgressZ = startPos.x;
         
-        // Note: TrainingLogger will be initialized lazily on first use to avoid interfering with ML-Agents startup
     }
     
-    /// <summary>
-    /// Checks if demo mode is enabled (MLAGENTS_DEMO_MODE=true).
-    /// DEMO MODE ONLY - Training is completely unaffected.
-    /// </summary>
     bool IsDemoMode()
     {
-        // 1. Check environment variable (if manually set)
+
         string demoEnv = System.Environment.GetEnvironmentVariable("MLAGENTS_DEMO_MODE");
         if (!string.IsNullOrEmpty(demoEnv) && (demoEnv.ToLower() == "true" || demoEnv == "1"))
         {
             return true;
         }
         
-        // 2. Check demo_mode.env file - try multiple paths
         string projectRoot = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, ".."));
         string srcFolder = System.IO.Path.Combine(projectRoot, "src");
         
@@ -168,7 +145,7 @@ public class ParkourAgent : Agent
                 }
                 catch
                 {
-                    // Continue checking other paths
+
                 }
             }
         }
@@ -176,15 +153,9 @@ public class ParkourAgent : Agent
         return false;
     }
     
-    /// <summary>
-    /// Applies time_scale from config file for DEMO/INFERENCE MODE ONLY.
-    /// ⚠️ CRITICAL: This function is ONLY called when IsDemoMode() returns true.
-    /// ⚠️ Training is COMPLETELY UNAFFECTED - this code never runs during training.
-    /// </summary>
     void ApplyTimeScaleFromConfig(string debugId)
     {
-        // METHOD 1: Read from TIMESCALE.txt file (written by Python script before ML-Agents starts)
-        // This file is only created by run_inference.py, which is only used for demo/inference
+
         string timescaleFile = System.IO.Path.Combine(Application.dataPath, "..", "TIMESCALE.txt");
         if (System.IO.File.Exists(timescaleFile))
         {
@@ -204,8 +175,6 @@ public class ParkourAgent : Agent
             }
         }
         
-        // METHOD 2: Fallback - read from most recent inference config
-        // Only inference runs create inference_* directories, so this is safe
         try
         {
             string resultsPath = System.IO.Path.Combine(Application.dataPath, "..", "results");
@@ -250,7 +219,6 @@ public class ParkourAgent : Agent
         if (jumpForce < 0) jumpForce = config.jumpForce;
         if (gravity < 0) gravity = config.gravity;
         
-        // Debug: Log initialized values
         Debug.Log($"[ParkourAgent] Initialized - moveSpeed={moveSpeed}, jumpForce={jumpForce}, gravity={gravity}");
     }
     
@@ -258,18 +226,15 @@ public class ParkourAgent : Agent
     {
         Debug.Log($"[ParkourAgent] OnEpisodeBegin called for agent '{name}'");
         
-        // TIMESCALE DEBUG: Log time scale at episode start
         Debug.Log($"[TIMESCALE-DEBUG] OnEpisodeBegin - Time.timeScale: {Time.timeScale}, Time.fixedDeltaTime: {Time.fixedDeltaTime}, Time.deltaTime: {Time.deltaTime}");
         
-        // Reset training area (regenerate platforms if randomization enabled)
         if (trainingArea != null)
         {
             trainingArea.ResetArea();
             transform.position = trainingArea.GetAgentSpawnPosition();
-            target = trainingArea.GetTargetTransform(); // Update target reference
+            target = trainingArea.GetTargetTransform();
             Debug.Log($"[ParkourAgent] Reset to position: {transform.position}, Target: {target?.position}, Target X: {target?.position.x:F1}");
             
-            // Update finish wall position in demo mode (target position may have changed after platform regeneration)
             if (IsDemoMode())
             {
                 InferenceVisualEnhancer enhancer = FindObjectOfType<InferenceVisualEnhancer>();
@@ -282,21 +247,20 @@ public class ParkourAgent : Agent
         }
         else
         {
-            transform.position = startPos; // Fallback for non-training scenarios
+            transform.position = startPos;
             Debug.Log($"[ParkourAgent] No TrainingArea, using startPos: {startPos}");
         }
         
-        transform.rotation = Quaternion.Euler(0, 90, 0); // Face along X-axis where platforms are
-        controller.enabled = false; // Prevent physics glitch
+        transform.rotation = Quaternion.Euler(0, 90, 0);
+        controller.enabled = false;
         controller.enabled = true;
         
         episodeTimer = 0f;
-        lastProgressZ = transform.position.x; // Track X position for progress
-        startPos = transform.position; // Update startPos to current spawn position
+        lastProgressZ = transform.position.x;
+        startPos = transform.position;
         velocity = Vector3.zero;
-        justJumped = false; // Reset jump flag
+        justJumped = false;
         
-        // Reset episode metrics
         episodeReward = 0f;
         jumpCount = 0;
         forwardActionCount = 0;
@@ -305,40 +269,31 @@ public class ParkourAgent : Agent
         rollActionCount = 0;
         maxDistanceReached = 0f;
         
-        // Reset stamina to max
         CharacterConfig config = CharacterConfigManager.Config;
         currentStamina = config.maxStamina;
         
-        // Reset sprint cooldown
         lastSprintEndTime = -1f;
         previousAction = -1;
         
-        // Randomly enable style bonus for this episode (10-20% of episodes)
         styleBonusEnabled = Random.Range(0f, 1f) < config.styleEpisodeFrequency;
         if (styleBonusEnabled)
         {
             Debug.Log($"[ParkourAgent] Style bonus ENABLED for this episode (roll actions will receive +{config.rollStyleBonus} bonus)");
         }
         
-        // Reset roll state
         isRolling = false;
         rollStartTime = 0f;
         
-        // Increment episode number and reset timestep
         episodeNumber++;
         episodeTimestep = 0;
         
-        // Initialize logger lazily on first episode (after ML-Agents is fully ready)
-        // Always call Initialize() to re-check for new training directories
         TrainingLogger.Instance.Initialize();
         
-        // Set metadata only once (on first successful initialization)
         if (TrainingLogger.Instance.IsInitialized() && episodeNumber == 1)
         {
             TrainingLogger.Instance.SetMetadata(config.styleEpisodeFrequency);
         }
         
-        // Start episode tracking in logger (only if initialized)
         if (TrainingLogger.Instance.IsInitialized())
         {
             int stepCount = Academy.Instance.StepCount;
@@ -354,7 +309,7 @@ public class ParkourAgent : Agent
     
     public override void CollectObservations(VectorSensor sensor)
     {
-        // Debug: Log observations occasionally to verify they're not all zeros
+
         if (Time.frameCount == 1 || Time.frameCount % 500 == 0)
         {
             if (target != null)
@@ -364,18 +319,16 @@ public class ParkourAgent : Agent
             }
         }
         
-        // Position relative to target (with null check)
         if (target != null)
         {
             Vector3 toTarget = target.position - transform.position;
-            sensor.AddObservation(toTarget); // 3 floats
+            sensor.AddObservation(toTarget);
             
-            // Debug verification: Check raycasts align with target direction
             #if UNITY_EDITOR
             Vector3 toTargetNormalized = toTarget.normalized;
             Vector3 forward = transform.forward;
             float alignment = Vector3.Dot(forward, toTargetNormalized);
-            // alignment should be close to 1.0 if perfectly aligned
+
             if (alignment < 0.9f)
             {
                 Debug.LogWarning($"[ParkourAgent] Raycast misalignment! Forward: {forward}, ToTarget: {toTargetNormalized}, Dot: {alignment:F3}");
@@ -384,21 +337,17 @@ public class ParkourAgent : Agent
         }
         else
         {
-            // If no target, just observe zero vector (agent can't learn to reach target without it)
-            sensor.AddObservation(Vector3.zero); // 3 floats
+
+            sensor.AddObservation(Vector3.zero);
         }
         
-        // Velocity
-        sensor.AddObservation(controller.velocity); // 3 floats
+        sensor.AddObservation(controller.velocity);
         
-        // Grounded state
-        sensor.AddObservation(controller.isGrounded ? 1f : 0f); // 1 float
+        sensor.AddObservation(controller.isGrounded ? 1f : 0f);
         
-        // === PLATFORM DETECTION RAYCASTS ===
-        // Multiple downward raycasts ahead to detect gaps and platform edges
         CharacterConfig config = CharacterConfigManager.Config;
-        float maxRayDist = 10f; // How far down to check
-        float[] forwardDistances = { 2f, 4f, 6f, 8f, 10f }; // Check at these distances ahead
+        float maxRayDist = 10f;
+        float[] forwardDistances = { 2f, 4f, 6f, 8f, 10f };
         
         foreach (float forwardDist in forwardDistances)
         {
@@ -407,129 +356,113 @@ public class ParkourAgent : Agent
             
             if (Physics.Raycast(rayOrigin, Vector3.down, out hit, maxRayDist))
             {
-                // Hit a platform - return normalized distance to platform
-                sensor.AddObservation(hit.distance / maxRayDist); // 1 float per raycast
+
+                sensor.AddObservation(hit.distance / maxRayDist);
             }
             else
             {
-                // No platform detected (gap or too far down)
-                sensor.AddObservation(1f); // 1 float (1.0 = no platform)
+
+                sensor.AddObservation(1f);
             }
         }
-        // 5 floats for platform detection
-        
-        // Forward obstacle raycast (for walls/obstacles, not gaps)
+
         RaycastHit obstacleHit;
         float raycastDist = config.obstacleRaycastDistance;
         float obstacleDistance = Physics.Raycast(transform.position, transform.forward, out obstacleHit, raycastDist) 
             ? obstacleHit.distance : raycastDist;
-        sensor.AddObservation(obstacleDistance / raycastDist); // 1 float, normalized
+        sensor.AddObservation(obstacleDistance / raycastDist);
         
-        // Stamina (normalized: 0.0 to 1.0)
         float normalizedStamina = currentStamina / config.maxStamina;
-        sensor.AddObservation(normalizedStamina); // 1 float
+        sensor.AddObservation(normalizedStamina);
         
-        // Total: 3 + 3 + 1 + 5 + 1 + 1 = 14 observations
     }
     
     void FixedUpdate()
     {
-        // TIMESCALE DEBUG: Log every 300 frames (every ~6 seconds at 50Hz)
+
         if (Time.frameCount % 300 == 0)
         {
             Debug.Log($"[TIMESCALE-DEBUG] FixedUpdate Frame {Time.frameCount} - Time.timeScale: {Time.timeScale}, Time.fixedDeltaTime: {Time.fixedDeltaTime}, Time.deltaTime: {Time.deltaTime:F6}, realtimeSinceStartup: {Time.realtimeSinceStartup:F2}");
         }
         
-        // === STAMINA SYSTEM (in physics step) ===
         CharacterConfig config = CharacterConfigManager.Config;
         
-        // Consume stamina while sprinting (action 3)
         if (currentAction == 3 && currentStamina > 0f)
         {
             currentStamina -= config.staminaConsumptionRate * Time.fixedDeltaTime;
-            currentStamina = Mathf.Max(0f, currentStamina); // Clamp to 0
+            currentStamina = Mathf.Max(0f, currentStamina);
             
-            // If stamina depleted during sprint, fall back to jog
             if (currentStamina <= 0f)
             {
-                currentAction = 2; // Fall back to jog
-                lastSprintEndTime = Time.time; // Record sprint end time for cooldown
+                currentAction = 2;
+                lastSprintEndTime = Time.time;
             }
         }
-        // Regenerate stamina when not sprinting, not jumping, and not rolling
+
         else if (currentAction != 3 && currentAction != 1 && currentAction != 4)
         {
             currentStamina += config.staminaRegenRate * Time.fixedDeltaTime;
-            currentStamina = Mathf.Min(config.maxStamina, currentStamina); // Clamp to max
+            currentStamina = Mathf.Min(config.maxStamina, currentStamina);
         }
         
-        // Handle roll state (roll is a timed action, similar to jump)
         if (isRolling)
         {
             float rollElapsed = Time.time - rollStartTime;
             if (rollElapsed >= ROLL_DURATION)
             {
-                isRolling = false; // Roll complete
+                isRolling = false;
             }
         }
         
-        // Calculate horizontal movement
         Vector3 horizontalMove = Vector3.zero;
-        float currentMoveSpeed = moveSpeed; // Default to jog speed
+        float currentMoveSpeed = moveSpeed;
         
-        if (currentAction == 2) // Jog forward
+        if (currentAction == 2)
         {
             currentMoveSpeed = moveSpeed;
             horizontalMove = transform.forward * currentMoveSpeed * Time.fixedDeltaTime;
         }
-        else if (currentAction == 3 && currentStamina > 0f) // Sprint forward (only if stamina available)
+        else if (currentAction == 3 && currentStamina > 0f)
         {
             currentMoveSpeed = config.sprintSpeed;
             horizontalMove = transform.forward * currentMoveSpeed * Time.fixedDeltaTime;
         }
         
-        // Apply jump forward boost if we just jumped (for more horizontal, human-like jumps)
         if (justJumped)
         {
             Vector3 jumpBoost = transform.forward * config.jumpForwardBoost * Time.fixedDeltaTime;
             horizontalMove += jumpBoost;
-            justJumped = false; // Reset flag after applying boost
+            justJumped = false;
         }
         
-        // Apply roll forward movement (roll provides burst forward movement, faster than sprint)
         if (isRolling)
         {
-            // Roll provides forward movement at 1.5x sprint speed (18 units/sec) - makes it BETTER than sprinting
-            // Roll is a burst action: high stamina cost but provides faster movement + reward
-            // This makes roll attractive: faster than sprint + base reward (0.5) + style bonus (1.5)
-            float rollSpeed = config.sprintSpeed * 1.5f; // 18 units/sec (50% faster than sprint)
+
+            float rollSpeed = config.sprintSpeed * 1.5f;
             Vector3 rollMove = transform.forward * rollSpeed * Time.fixedDeltaTime;
             horizontalMove += rollMove;
         }
         
-        // Debug: Log when movement action is taken
         if (Time.frameCount % 50 == 0 && horizontalMove.magnitude > 0.001f)
         {
             Debug.Log($"[ParkourAgent] Movement active! currentAction={currentAction}, speed={currentMoveSpeed}, stamina={currentStamina:F1}, horizontalMove={horizontalMove}");
         }
         
-        // Apply gravity continuously
         if (!controller.isGrounded)
         {
             velocity.y += gravity * Time.fixedDeltaTime;
         }
         else if (velocity.y < 0)
         {
-            // Reset velocity when grounded
+
             velocity.y = config.groundedVelocityReset;
         }
         
-        // Combine horizontal movement and vertical velocity into ONE Move() call
         Vector3 finalMovement = horizontalMove + (velocity * Time.fixedDeltaTime);
         if (controller != null)
         {
             controller.Move(finalMovement);
-            // Debug: Log actual movement applied
+
             if (Time.frameCount % 100 == 0 && horizontalMove.magnitude > 0.001f)
             {
                 Debug.Log($"[ParkourAgent] Movement applied! horizontalMove={horizontalMove}, finalMovement={finalMovement}, pos before={transform.position}");
@@ -540,12 +473,10 @@ public class ParkourAgent : Agent
             Debug.LogError("[ParkourAgent] CharacterController is NULL! Movement cannot be applied!");
         }
         
-        // Emergency fall reset (backup if OnActionReceived not called)
         if (transform.position.y < config.fallThreshold - 5f)
         {
             Debug.LogWarning($"[ParkourAgent] EMERGENCY FALL RESET! Agent y={transform.position.y:F2} < {config.fallThreshold - 5f}. Position: {transform.position}. Agent is falling through world!");
             
-            // Flash red screen in demo mode
             if (DemoModeScreenFlash.Instance != null)
             {
                 DemoModeScreenFlash.Instance.FlashRed();
@@ -554,15 +485,11 @@ public class ParkourAgent : Agent
             EndEpisode();
         }
         
-        // Debug: Visualize raycasts (only in editor)
         #if UNITY_EDITOR
         DrawDebugRaycasts();
         #endif
     }
     
-    /// <summary>
-    /// Visualize the platform detection raycasts for debugging
-    /// </summary>
     void DrawDebugRaycasts()
     {
         float maxRayDist = 10f;
@@ -575,13 +502,13 @@ public class ParkourAgent : Agent
             
             if (Physics.Raycast(rayOrigin, Vector3.down, out hit, maxRayDist))
             {
-                // Hit platform - draw green to hit point, then red to max distance
+
                 Debug.DrawLine(rayOrigin, hit.point, Color.green);
                 Debug.DrawLine(hit.point, rayOrigin + Vector3.down * maxRayDist, Color.red);
             }
             else
             {
-                // No hit - draw red line
+
                 Debug.DrawLine(rayOrigin, rayOrigin + Vector3.down * maxRayDist, Color.red);
             }
         }
@@ -589,7 +516,7 @@ public class ParkourAgent : Agent
     
     public override void OnActionReceived(ActionBuffers actions)
     {
-        // Safety check: ensure actions are valid
+
         if (actions.DiscreteActions.Length == 0)
         {
             Debug.LogWarning("[ParkourAgent] Received invalid action buffer. Using default action (idle).");
@@ -597,60 +524,51 @@ public class ParkourAgent : Agent
             return;
         }
         
-        // Get config once at the start of the method
         CharacterConfig config = CharacterConfigManager.Config;
         
-        // Discrete actions: 0=idle, 1=jump, 2=jog forward, 3=sprint forward, 4=roll forward
         currentAction = actions.DiscreteActions[0];
         
-        // Block sprint (action 3) if no stamina - fall back to jog (action 2)
         if (currentAction == 3 && currentStamina <= 0f)
         {
-            currentAction = 2; // Fall back to jog
+            currentAction = 2;
         }
         
-        // Block sprint (action 3) if cooldown hasn't elapsed - fall back to jog (action 2)
         if (currentAction == 3 && lastSprintEndTime >= 0f)
         {
             float timeSinceLastSprint = Time.time - lastSprintEndTime;
             if (timeSinceLastSprint < sprintCooldownDuration)
             {
-                currentAction = 2; // Fall back to jog (cooldown active)
+                currentAction = 2;
             }
         }
         
-        // Track sprint end time: if we were sprinting (previousAction == 3) and now we're not, record the end time
         if (previousAction == 3 && currentAction != 3)
         {
-            lastSprintEndTime = Time.time; // Record when sprint ended
+            lastSprintEndTime = Time.time;
         }
         
-        // Update previous action for next frame
         previousAction = currentAction;
         
-        // Block jump (action 1) if insufficient stamina
         if (currentAction == 1)
         {
             if (currentStamina < config.jumpStaminaCost)
             {
-                currentAction = 0; // Block jump, do nothing
+                currentAction = 0;
             }
         }
         
-        // Block roll (action 4) if insufficient stamina or already rolling
         if (currentAction == 4)
         {
             if (currentStamina < config.rollStaminaCost)
             {
-                currentAction = 0; // Block roll, do nothing
+                currentAction = 0;
             }
             else if (isRolling)
             {
-                currentAction = 0; // Block roll if already rolling (can't chain rolls)
+                currentAction = 0;
             }
         }
         
-        // Debug: Check if we're in inference and log model status
         if (Time.frameCount == 1 || Time.frameCount % 500 == 0)
         {
             BehaviorParameters bp = GetComponent<BehaviorParameters>();
@@ -658,7 +576,6 @@ public class ParkourAgent : Agent
             Debug.Log($"[ParkourAgent] Frame {Time.frameCount}: Action={currentAction}, HasModel={hasModel}, BehaviorType={bp?.BehaviorType}, Deterministic={bp?.DeterministicInference}");
         }
         
-        // Debug: Log action distribution every 100 steps
         if (Time.frameCount % 100 == 0)
         {
             Debug.Log($"[ParkourAgent] Action received: {currentAction} (0=idle, 1=jump, 2=jog, 3=sprint, 4=roll). Stamina: {currentStamina:F1}/{CharacterConfigManager.Config.maxStamina:F1}. Total actions - Idle: {idleActionCount}, Jump: {jumpCount}, Jog: {forwardActionCount}, Sprint: {sprintActionCount}, Roll: {rollActionCount}");
@@ -667,7 +584,6 @@ public class ParkourAgent : Agent
         episodeTimer += Time.fixedDeltaTime;
         episodeTimestep++;
         
-        // Track action distribution (track original action before blocking)
         int originalAction = actions.DiscreteActions[0];
         switch (originalAction)
         {
@@ -678,27 +594,21 @@ public class ParkourAgent : Agent
             case 4: rollActionCount++; break;
         }
         
-        // Log stamina (sampled to reduce file size)
         int stepCount = Academy.Instance.StepCount;
         TrainingLogger.Instance.RecordStamina(episodeTimestep, currentStamina, stepCount);
         
-        // Handle one-time actions (jump) - only if we have stamina
         if (currentAction == 1 && controller.isGrounded)
         {
             TriggerJump();
         }
         
-        // Handle roll action - only if we have stamina and are grounded
         if (currentAction == 4 && controller.isGrounded && !isRolling)
         {
             TriggerRoll();
         }
         
-        // REWARD SHAPING - This is critical
-        
-        // 1. Speed reward: forward progress (along X-axis where platforms are)
         float currentX = transform.position.x;
-        float progressDelta = currentX - lastProgressZ; // lastProgressZ tracks X now
+        float progressDelta = currentX - lastProgressZ;
         if (progressDelta > 0)
         {
             float progressReward = progressDelta * config.progressRewardMultiplier;
@@ -708,63 +618,55 @@ public class ParkourAgent : Agent
         }
         lastProgressZ = currentX;
         
-        // Track max distance for diagnostics
         float distanceFromStart = currentX - startPos.x;
         if (distanceFromStart > maxDistanceReached)
         {
             maxDistanceReached = distanceFromStart;
         }
         
-        // 2. Staying alive/on platform reward (encourages not falling)
         if (controller.isGrounded)
         {
-            float groundedReward = 0.001f; // Small reward per step for being on ground
+            float groundedReward = 0.001f;
             AddReward(groundedReward);
             episodeReward += groundedReward;
             TrainingLogger.Instance.RecordRewardComponent("grounded", groundedReward);
         }
         
-        // 2.25. Low stamina penalty (discourages keeping stamina at 0, encourages conservation for rolls/jumps)
         float normalizedStamina = currentStamina / config.maxStamina;
-        if (normalizedStamina < 0.2f) // Stamina < 20%
+        if (normalizedStamina < 0.2f)
         {
             AddReward(config.lowStaminaPenalty);
             episodeReward += config.lowStaminaPenalty;
             TrainingLogger.Instance.RecordRewardComponent("low_stamina_penalty", config.lowStaminaPenalty);
         }
         
-        // 2.5. Roll rewards (base reward always, style bonus in style episodes)
         if (currentAction == 4 && isRolling)
         {
-            // Base reward: always given to encourage roll usage
+
             AddReward(config.rollBaseReward);
             episodeReward += config.rollBaseReward;
             TrainingLogger.Instance.RecordRewardComponent("roll_base", config.rollBaseReward);
             
-            // Style bonus: additional reward in style episodes
             if (styleBonusEnabled)
             {
                 AddReward(config.rollStyleBonus);
                 episodeReward += config.rollStyleBonus;
                 TrainingLogger.Instance.RecordRewardComponent("roll_style", config.rollStyleBonus);
-                if (Time.frameCount % 50 == 0) // Log occasionally to avoid spam
+                if (Time.frameCount % 50 == 0)
                 {
                     Debug.Log($"[ParkourAgent] Roll reward: Base={config.rollBaseReward}, Style={config.rollStyleBonus}, Total={config.rollBaseReward + config.rollStyleBonus}");
                 }
             }
         }
         
-        // 3. Time penalty (encourages speed)
         AddReward(config.timePenalty);
         episodeReward += config.timePenalty;
         TrainingLogger.Instance.RecordRewardComponent("time_penalty", config.timePenalty);
         
-        // 3. Reached target (only if target is assigned)
-        // Use X-axis distance only (not 3D) to avoid issues when agent passes target at different Y height
         if (target != null)
         {
             float distanceToTargetX = Mathf.Abs(transform.position.x - target.position.x);
-            // Debug: Log target position and distance every 50 steps
+
             if (Time.frameCount % 50 == 0)
             {
                 Debug.Log($"[ParkourAgent] Agent X: {transform.position.x:F1}, Target X: {target.position.x:F1}, Distance X: {distanceToTargetX:F1}");
@@ -777,19 +679,16 @@ public class ParkourAgent : Agent
                 episodeReward += config.targetReachReward;
                 TrainingLogger.Instance.RecordRewardComponent("target_reach", config.targetReachReward);
                 
-                // End episode tracking
                 stepCount = Academy.Instance.StepCount;
                 TrainingLogger.Instance.EndEpisode(episodeNumber, episodeTimer, maxDistanceReached, "Success", stepCount);
                 
                 LogEpisodeStats("Success");
                 
-                // Flash green screen in demo mode
                 if (DemoModeScreenFlash.Instance != null)
                 {
                     DemoModeScreenFlash.Instance.FlashGreen();
                 }
                 
-                // Notify menu in demo mode before ending episode
                 if (IsDemoMode() && DemoModeRunCompleteMenu.Instance != null)
                 {
                     DemoModeRunCompleteMenu.Instance.OnEpisodeComplete(
@@ -802,7 +701,6 @@ public class ParkourAgent : Agent
             }
         }
         
-        // 4. Fell off / timeout
         bool fell = transform.position.y < config.fallThreshold;
         bool timedOut = episodeTimer > config.episodeTimeout;
         if (fell || timedOut)
@@ -810,12 +708,10 @@ public class ParkourAgent : Agent
             string reason = fell ? $"Fell (y={transform.position.y:F2} < {config.fallThreshold})" : $"Timeout (t={episodeTimer:F2} > {config.episodeTimeout})";
             string endReason = fell ? "Fell" : "Timeout";
             
-            // Comprehensive debug output on fail
             string debugInfo = $"[ParkourAgent] Episode ending: {reason}.\n";
             debugInfo += $"  Agent position: {transform.position}\n";
             debugInfo += $"  Timer: {episodeTimer:F2}s, Grounded: {controller.isGrounded}\n";
             
-            // Target position and distance
             if (target != null)
             {
                 Vector3 toTarget = target.position - transform.position;
@@ -825,11 +721,10 @@ public class ParkourAgent : Agent
                 debugInfo += $"  Distance to target (3D): {distanceToTarget:F2} units\n";
                 debugInfo += $"  Distance to target (X-axis): {distanceToTargetX:F2} units\n";
                 
-                // Try to find finish wall (created by InferenceVisualEnhancer)
                 Transform finishWall = target.Find("FinishWall");
                 if (finishWall == null)
                 {
-                    // Also check for AnimusWall (older name)
+
                     finishWall = target.Find("AnimusWall");
                 }
                 
@@ -844,7 +739,7 @@ public class ParkourAgent : Agent
                 }
                 else
                 {
-                    // Wall is typically at target position, so use target as wall reference
+
                     debugInfo += $"  Wall position: {target.position} (wall not found, using target position)\n";
                     debugInfo += $"  Distance to wall (X-axis): {distanceToTargetX:F2} units (using target distance)\n";
                 }
@@ -859,19 +754,16 @@ public class ParkourAgent : Agent
             episodeReward += config.fallPenalty;
             TrainingLogger.Instance.RecordRewardComponent("fall_penalty", config.fallPenalty);
             
-            // End episode tracking
             int finalStepCount = Academy.Instance.StepCount;
             TrainingLogger.Instance.EndEpisode(episodeNumber, episodeTimer, maxDistanceReached, endReason, finalStepCount);
             
             LogEpisodeStats(endReason);
             
-            // Flash red screen in demo mode
             if (DemoModeScreenFlash.Instance != null)
             {
                 DemoModeScreenFlash.Instance.FlashRed();
             }
             
-            // Notify menu in demo mode before ending episode
             if (IsDemoMode() && DemoModeRunCompleteMenu.Instance != null)
             {
                 DemoModeRunCompleteMenu.Instance.OnEpisodeComplete(
@@ -886,82 +778,70 @@ public class ParkourAgent : Agent
     
     public override void Heuristic(in ActionBuffers actionsOut)
     {
-        // Manual control for testing (only works in Editor with old Input System)
+
         var discreteActions = actionsOut.DiscreteActions;
-        discreteActions[0] = 0; // Default: nothing
+        discreteActions[0] = 0;
         
-        // Try to use old Input System (only works if not using new Input System package)
-        // During training, this won't be called anyway (agent uses trained policy)
         try
         {
             #if UNITY_EDITOR
-            // Only try input in editor, and only if old Input System is active
-            if (UnityEngine.Input.inputString != null) // Check if old Input System is available
+
+            if (UnityEngine.Input.inputString != null)
             {
-                if (UnityEngine.Input.GetKey(KeyCode.Space)) discreteActions[0] = 1; // Jump
-                else if (UnityEngine.Input.GetKey(KeyCode.R)) discreteActions[0] = 4; // Roll (R key for testing)
-                else if (UnityEngine.Input.GetKey(KeyCode.LeftShift) && UnityEngine.Input.GetKey(KeyCode.W)) discreteActions[0] = 3; // Sprint
-                else if (UnityEngine.Input.GetKey(KeyCode.W)) discreteActions[0] = 2; // Jog
+                if (UnityEngine.Input.GetKey(KeyCode.Space)) discreteActions[0] = 1;
+                else if (UnityEngine.Input.GetKey(KeyCode.R)) discreteActions[0] = 4;
+                else if (UnityEngine.Input.GetKey(KeyCode.LeftShift) && UnityEngine.Input.GetKey(KeyCode.W)) discreteActions[0] = 3;
+                else if (UnityEngine.Input.GetKey(KeyCode.W)) discreteActions[0] = 2;
             }
             #endif
         }
         catch (System.InvalidOperationException)
         {
-            // New Input System is active - heuristic not available, just return default (0)
+
             discreteActions[0] = 0;
         }
     }
     
-    /// <summary>
-    /// Triggers a jump if the agent is grounded and has sufficient stamina.
-    /// </summary>
     private void TriggerJump()
     {
         if (controller.isGrounded)
         {
             CharacterConfig config = CharacterConfigManager.Config;
-            // Consume stamina for jump (in physics step, but triggered here)
+
             if (currentStamina >= config.jumpStaminaCost)
             {
                 currentStamina -= config.jumpStaminaCost;
-                currentStamina = Mathf.Max(0f, currentStamina); // Clamp to 0
+                currentStamina = Mathf.Max(0f, currentStamina);
                 velocity.y = jumpForce;
-                // Set flag to apply horizontal boost in FixedUpdate (for more human-like, horizontal jumps)
+
                 justJumped = true;
             }
-            // If insufficient stamina, jump is blocked (already handled in OnActionReceived)
+
         }
     }
     
-    /// <summary>
-    /// Triggers a roll forward if the agent is grounded and has sufficient stamina.
-    /// Roll provides forward traversal similar to jump but with higher stamina cost.
-    /// </summary>
     private void TriggerRoll()
     {
         if (controller.isGrounded && !isRolling)
         {
             CharacterConfig config = CharacterConfigManager.Config;
-            // Consume stamina for roll (high cost: 4-6x sprint cost)
+
             if (currentStamina >= config.rollStaminaCost)
             {
                 currentStamina -= config.rollStaminaCost;
-                currentStamina = Mathf.Max(0f, currentStamina); // Clamp to 0
-                // Start roll animation/movement
+                currentStamina = Mathf.Max(0f, currentStamina);
+
                 isRolling = true;
                 rollStartTime = Time.time;
                 Debug.Log($"[ParkourAgent] Roll triggered! Stamina cost: {config.rollStaminaCost}, Remaining: {currentStamina:F1}");
             }
-            // If insufficient stamina, roll is blocked (already handled in OnActionReceived)
+
         }
     }
     
-    /// <summary>
-    /// Log episode statistics for diagnostics
-    /// </summary>
     private void LogEpisodeStats(string endReason)
     {
-        // Log custom stats to TensorBoard
+
         Academy.Instance.StatsRecorder.Add("Episode/TotalReward", episodeReward);
         Academy.Instance.StatsRecorder.Add("Episode/Length", episodeTimer);
         Academy.Instance.StatsRecorder.Add("Episode/MaxDistance", maxDistanceReached);
@@ -970,7 +850,6 @@ public class ParkourAgent : Agent
         Academy.Instance.StatsRecorder.Add("Actions/SprintCount", sprintActionCount);
         Academy.Instance.StatsRecorder.Add("Actions/IdleCount", idleActionCount);
         
-        // Calculate action distribution percentages
         int totalActions = jumpCount + forwardActionCount + sprintActionCount + idleActionCount + rollActionCount;
         if (totalActions > 0)
         {
@@ -981,7 +860,6 @@ public class ParkourAgent : Agent
             Academy.Instance.StatsRecorder.Add("Actions/IdlePercentage", (float)idleActionCount / totalActions * 100f);
         }
         
-        // Log roll count
         Academy.Instance.StatsRecorder.Add("Actions/RollCount", rollActionCount);
     }
     

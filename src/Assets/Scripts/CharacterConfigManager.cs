@@ -1,9 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Singleton manager to access CharacterConfig from anywhere in the codebase.
-/// Automatically finds or creates a config instance.
-/// </summary>
 public class CharacterConfigManager : MonoBehaviour
 {
     private static CharacterConfigManager _instance;
@@ -28,12 +24,8 @@ public class CharacterConfigManager : MonoBehaviour
     [Tooltip("Assign a CharacterConfig asset here, or leave null to use default values")]
     public CharacterConfig config;
     
-    // Default config instance (created at runtime if no asset assigned)
     private CharacterConfig _defaultConfig;
     
-    /// <summary>
-    /// Gets the active config (either assigned asset or default runtime config)
-    /// </summary>
     public static CharacterConfig Config
     {
         get
@@ -41,7 +33,6 @@ public class CharacterConfigManager : MonoBehaviour
             if (Instance.config != null)
                 return Instance.config;
             
-            // Create default config if none assigned
             if (Instance._defaultConfig == null)
             {
                 Instance._defaultConfig = ScriptableObject.CreateInstance<CharacterConfig>();
@@ -63,4 +54,3 @@ public class CharacterConfigManager : MonoBehaviour
         }
     }
 }
-

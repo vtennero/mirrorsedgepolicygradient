@@ -8,19 +8,17 @@ public class GameManager : MonoBehaviour
     
     [Header("Spawn Settings")]
     [Tooltip("Override config values if needed, otherwise uses CharacterConfig")]
-    public Vector3 playerSpawnPosition = new Vector3(float.MinValue, float.MinValue, float.MinValue); // MinValue means use config
+    public Vector3 playerSpawnPosition = new Vector3(float.MinValue, float.MinValue, float.MinValue);
     
     void Awake()
     {
-        // Initialize spawn position from config if not overridden
+
         if (playerSpawnPosition.x == float.MinValue)
         {
             CharacterConfig config = CharacterConfigManager.Config;
             playerSpawnPosition = config.defaultSpawnPosition;
         }
         
-        // Auto-setup ControlModeManager if it doesn't exist
-        // But check if one already exists in scene (not just instance)
         ControlModeManager existing = FindObjectOfType<ControlModeManager>();
         if (existing == null && ControlModeManager.Instance == null)
         {
@@ -41,18 +39,14 @@ public class GameManager : MonoBehaviour
     
     void InitializeGame()
     {
-        // The level generator will generate platforms automatically in its Start method
-        // Player should be spawned manually or via prefab in the scene
-        
-        // Check if player already exists in scene
+
         PlayerController existingPlayer = FindObjectOfType<PlayerController>();
         if (existingPlayer != null)
         {
             Debug.Log($"Game initialized - Found existing player in scene: {existingPlayer.gameObject.name}");
-            return; // Player already exists, don't spawn another
+            return;
         }
         
-        // If no player is found in scene and we have a prefab, spawn one
         if (playerPrefab != null)
         {
             GameObject spawnedPlayer = Instantiate(playerPrefab, playerSpawnPosition, Quaternion.identity);
@@ -66,10 +60,7 @@ public class GameManager : MonoBehaviour
     
     void Update()
     {
-        // Future game logic can go here
-        // For now, just handle basic game state
-        
-        // Example: Reset player if they fall too far
+
         PlayerController player = FindObjectOfType<PlayerController>();
         if (player != null)
         {

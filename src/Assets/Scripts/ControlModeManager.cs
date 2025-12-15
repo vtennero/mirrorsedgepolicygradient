@@ -1,17 +1,13 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// Manages control mode switching between Player Control and RL Agent Control.
-/// Can be configured via config file or Unity Inspector (future: menu system).
-/// </summary>
 public class ControlModeManager : MonoBehaviour
 {
     public enum ControlMode
     {
-        Player,      // Human player control (WASD, mouse)
-        RLAgent,     // Reinforcement Learning agent control
-        Heuristic    // Manual control via ML-Agents heuristic (for testing)
+        Player,
+        RLAgent,
+        Heuristic
     }
     
     [Header("Control Settings")]
@@ -34,7 +30,7 @@ public class ControlModeManager : MonoBehaviour
     
     void Awake()
     {
-        // Singleton pattern
+
         if (instance != null && instance != this)
         {
             Destroy(gameObject);
@@ -42,13 +38,11 @@ public class ControlModeManager : MonoBehaviour
         }
         instance = this;
         
-        // Auto-find components if not assigned
         if (playerController == null)
             playerController = FindObjectOfType<PlayerController>();
         if (parkourAgent == null)
             parkourAgent = FindObjectOfType<ParkourAgent>();
         
-        // Warn if components not found
         if (playerController == null)
             Debug.LogWarning("ControlModeManager: PlayerController not found in scene!");
         if (parkourAgent == null)
@@ -57,22 +51,20 @@ public class ControlModeManager : MonoBehaviour
     
     void Start()
     {
-        // Load config if enabled
+
         if (loadFromConfig)
         {
             LoadControlModeFromConfig();
         }
         
-        // Apply initial mode (with delay to ensure all components are ready)
         StartCoroutine(ApplyControlModeDelayed());
     }
     
     private System.Collections.IEnumerator ApplyControlModeDelayed()
     {
-        // Wait one frame to ensure all components are initialized
+
         yield return null;
         
-        // Log current state before applying
         Debug.Log($"ControlModeManager: About to apply mode '{currentMode}'");
         Debug.Log($"  - PlayerController found: {playerController != null}");
         Debug.Log($"  - ParkourAgent found: {parkourAgent != null}");
@@ -80,20 +72,15 @@ public class ControlModeManager : MonoBehaviour
         SetControlMode(currentMode);
     }
     
-    /// <summary>
-    /// Sets the control mode and enables/disables appropriate components.
-    /// </summary>
     public void SetControlMode(ControlMode mode)
     {
         currentMode = mode;
         
-        // Re-find components if they weren't found initially
         if (playerController == null)
             playerController = FindObjectOfType<PlayerController>();
         if (parkourAgent == null)
             parkourAgent = FindObjectOfType<ParkourAgent>();
         
-        // Enable/disable components based on mode
         if (playerController != null)
         {
             bool shouldEnable = (mode == ControlMode.Player);
@@ -116,7 +103,6 @@ public class ControlModeManager : MonoBehaviour
             Debug.LogWarning("ControlModeManager: ParkourAgent not found. RL Agent mode won't work.");
         }
         
-        // Handle cursor lock based on mode
         if (mode == ControlMode.Player)
         {
             Cursor.lockState = CursorLockMode.Locked;
@@ -129,19 +115,15 @@ public class ControlModeManager : MonoBehaviour
         Debug.Log($"✓ Control Mode set to: {mode}");
     }
     
-    /// <summary>
-    /// Loads control mode from JSON config file in StreamingAssets or project root.
-    /// Falls back to Inspector value if file not found.
-    /// </summary>
     private void LoadControlModeFromConfig()
     {
-        // Try multiple possible locations
+
         string[] possiblePaths = new string[]
         {
             System.IO.Path.Combine(Application.streamingAssetsPath, configFileName),
-            System.IO.Path.Combine(Application.dataPath, "..", configFileName), // Project root
-            System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", configFileName)), // Absolute path
-            configFileName // Current directory (for editor)
+            System.IO.Path.Combine(Application.dataPath, "..", configFileName),
+            System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", configFileName)),
+            configFileName
         };
         
         string configPath = null;
@@ -161,7 +143,6 @@ public class ControlModeManager : MonoBehaviour
                 string json = System.IO.File.ReadAllText(configPath);
                 ControlConfig config = JsonUtility.FromJson<ControlConfig>(json);
                 
-                // Trim whitespace and handle case-insensitive matching
                 string modeStr = config.controlMode.Trim();
                 bool parsed = System.Enum.TryParse<ControlMode>(modeStr, true, out ControlMode parsedMode);
                 
@@ -186,14 +167,10 @@ public class ControlModeManager : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Saves current control mode to config file.
-    /// </summary>
     public void SaveControlModeToConfig()
     {
         string configPath = System.IO.Path.Combine(Application.streamingAssetsPath, configFileName);
         
-        // Create StreamingAssets directory if it doesn't exist
         if (!System.IO.Directory.Exists(Application.streamingAssetsPath))
         {
             System.IO.Directory.CreateDirectory(Application.streamingAssetsPath);
@@ -209,12 +186,11 @@ public class ControlModeManager : MonoBehaviour
         Debug.Log($"Saved control mode to config: {currentMode}");
     }
     
-    // Runtime switching (for future menu system)
     void Update()
     {
-        // Debug keys for switching modes (remove in production or make configurable)
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        // Use Input System instead of old Input class
+
         var keyboard = Keyboard.current;
         if (keyboard != null)
         {
@@ -240,4 +216,3 @@ public class ControlModeManager : MonoBehaviour
         public string controlMode;
     }
 }
-

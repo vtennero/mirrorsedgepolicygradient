@@ -9,7 +9,7 @@ public class QuickCharacterSetup : MonoBehaviour
     
     void CreateDemo()
     {
-        // Create platforms
+
         for (int i = 0; i < 10; i++)
         {
             GameObject platform = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -19,12 +19,10 @@ public class QuickCharacterSetup : MonoBehaviour
             platform.GetComponent<Renderer>().material.color = Color.gray;
         }
         
-        // Create a better looking character (capsule body + cube head)
         GameObject player = new GameObject("Player");
         player.transform.position = new Vector3(0, 1, 0);
         player.transform.rotation = Quaternion.Euler(0, 90, 0);
         
-        // Body (capsule)
         GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         body.transform.SetParent(player.transform);
         body.transform.localPosition = Vector3.zero;
@@ -32,7 +30,6 @@ public class QuickCharacterSetup : MonoBehaviour
         body.GetComponent<Renderer>().material.color = Color.blue;
         DestroyImmediate(body.GetComponent<CapsuleCollider>());
         
-        // Head (sphere)
         GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         head.transform.SetParent(player.transform);
         head.transform.localPosition = new Vector3(0, 1.2f, 0);
@@ -40,7 +37,6 @@ public class QuickCharacterSetup : MonoBehaviour
         head.GetComponent<Renderer>().material.color = Color.yellow;
         DestroyImmediate(head.GetComponent<SphereCollider>());
         
-        // Add components to main player object
         CharacterController cc = player.AddComponent<CharacterController>();
         cc.height = 2f;
         cc.radius = 0.4f;
@@ -48,7 +44,6 @@ public class QuickCharacterSetup : MonoBehaviour
         
         player.AddComponent<PlayerController>();
         
-        // Setup camera
         Camera cam = Camera.main;
         if (cam != null)
         {
