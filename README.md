@@ -122,15 +122,21 @@ This will:
 mirrorsedgepolicygradient/
 ├── src/                          # Unity project and Python scripts
 │   ├── Assets/
-│   │   ├── Scripts/              # C# scripts (see Scripts/README.md)
-│   │   ├── Characters/           # Character models and animations
+│   │   ├── Scripts/              # C# gameplay, training, demo, and UI logic
+│   │   ├── Characters/           # Models and animations
 │   │   └── Scenes/               # Unity scenes
 │   ├── parkour_config.yaml       # ML-Agents training configuration
 │   ├── train_with_progress.py    # Training wrapper with progress tracking
 │   └── run_inference.py          # Inference script with demo mode
+├── report/                       # LaTeX report and training summaries
+├── results/                      # Training run outputs (logs, models, metrics)
 ├── utils/
 │   └── dashboard/                # Training dashboard (Flask app)
-├── results/                      # Training run results
+├── CONFIG_INDEX.md               # Config reference
+├── ARCHITECTURE.md               # System architecture overview
+├── MDP.md                        # MDP definition
+├── DEMO_MODE_GUIDE.md            # Demo mode setup
+├── TRAINING_LOG.md               # Training experiments and results
 ├── requirements.txt              # Python dependencies
 ├── environment.yml               # Conda environment file
 └── README.md                     # This file
@@ -206,7 +212,3 @@ See [`utils/README.md`](utils/README.md) for detailed documentation and usage ex
 - Unity ML-Agents Toolkit
 - Mirror's Edge (inspiration for visual style)
 - Character models from various sources (see `src/Assets/Characters/README.md`)
-
-## License
-
-[Your License Here]
